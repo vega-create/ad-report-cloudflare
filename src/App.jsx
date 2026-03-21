@@ -8,6 +8,9 @@ import NewReport from './pages/NewReport'
 import ReportDetail from './pages/ReportDetail'
 import ReportEdit from './pages/ReportEdit'
 import PublicReport from './pages/PublicReport'
+import AgentDashboard from './pages/AgentDashboard'
+import AgentMessages from './pages/AgentMessages'
+import AgentTasks from './pages/AgentTasks'
 function App() {
   return (
     <BrowserRouter>
@@ -22,6 +25,9 @@ function App() {
           <Route path="reports/new" element={<NewReport />} />
           <Route path="reports/:id" element={<ReportDetail />} />
           <Route path="reports/:id/edit" element={<ReportEdit />} />
+          <Route path="agent" element={<AgentDashboard />} />
+          <Route path="agent/messages" element={<AgentMessages />} />
+          <Route path="agent/tasks" element={<AgentTasks />} />
         </Route>
       </Routes>
     </BrowserRouter>
