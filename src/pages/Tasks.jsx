@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabaseAgent as supabase } from '../lib/supabase-agent'
+import { supabase as supabaseAd } from '../lib/supabase'
 
 function getMonday(d) {
   const date = new Date(d)
@@ -48,14 +49,18 @@ export default function Tasks() {
   const [showParser, setShowParser] = useState(false)
   const [markdown, setMarkdown] = useState('')
   const [clientName, setClientName] = useState('')
-  const [reportDate, setReportDate] = useState('')
+  const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0])
   const [parsedTasks, setParsedTasks] = useState([])
   const [isParsing, setIsParsing] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
   // 完成任務
+  // 完成任務
   const [completingTask, setCompletingTask] = useState(null)
   const [outcomeNote, setOutcomeNote] = useState('')
+
+  // 客戶列表（從 clients 表讀取）
+  const [clients, setClients] = useState([])
 
   // 計算日期範圍
   const monday = getMonday(new Date())
@@ -92,9 +97,13 @@ export default function Tasks() {
     setLoading(false)
   }
 
-  useEffect(() => { loadTasks() }, [queryStart, queryEnd, selectedClient, statusFilter])
+  async function loadClients() {
+    const { data } = await supabaseAd.from('clients').select('name').order('name')
+    setClients((data || []).map(c => c.name))
+  }
 
-  const clients = [...new Set(tasks.map(t => t.client_name))]
+  useEffect(() => { loadClients() }, [])
+  useEffect(() => { loadTasks() }, [queryStart, queryEnd, selectedClient, statusFilter])
 
   function getTasksForDay(date) {
     const dateStr = formatDate(date)
@@ -267,10 +276,12 @@ export default function Tasks() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">客戶名稱</label>
-              <input type="text" value={clientName}
+              <select value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="例：寵樂芙" required />
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">請選擇客戶</option>
+                {clients.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">報告日期</label>

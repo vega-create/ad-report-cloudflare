@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
+
 export default function Layout() {
   const location = useLocation()
   const navItems = [
@@ -10,6 +11,7 @@ export default function Layout() {
     { path: '/agent', label: '智慧媽咪', icon: '🤖' },
     { path: '/agent/messages', label: '客戶訊息', icon: '💬' },
     { path: '/agent/tasks', label: '任務管理', icon: '📋' },
+    { path: '/guide', label: '使用說明', icon: '📖' },
   ]
   return (
     <div className="min-h-screen bg-gray-900 flex">

@@ -12,6 +12,7 @@ import AgentDashboard from './pages/AgentDashboard'
 import AgentMessages from './pages/AgentMessages'
 import AgentTasks from './pages/AgentTasks'
 import Tasks from './pages/Tasks'
+import Guide from './pages/Guide'
 function App() {
   return (
     <BrowserRouter>
@@ -30,6 +31,7 @@ function App() {
           <Route path="agent" element={<AgentDashboard />} />
           <Route path="agent/messages" element={<AgentMessages />} />
           <Route path="agent/tasks" element={<AgentTasks />} />
+          <Route path="guide" element={<Guide />} />
         </Route>
       </Routes>
     </BrowserRouter>
