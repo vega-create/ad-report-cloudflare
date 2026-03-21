@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabaseAgent as supabase } from '../lib/supabase-agent'
 
 export default function AgentMessages() {
   const [messages, setMessages] = useState([])

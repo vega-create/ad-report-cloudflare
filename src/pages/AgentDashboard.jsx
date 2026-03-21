@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { supabaseAgent as supabase } from '../lib/supabase-agent'
 
 export default function AgentDashboard() {
   const [employeeStats, setEmployeeStats] = useState([])
