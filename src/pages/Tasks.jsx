@@ -14,16 +14,35 @@ function formatDate(d) {
   return d.toISOString().split('T')[0]
 }
 
+function getMonthDays(year, month) {
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const startPad = (firstDay.getDay() + 6) % 7 // Monday = 0
+  const days = []
+  for (let i = -startPad; i <= lastDay.getDate() - 1; i++) {
+    const d = new Date(year, month, i + 1)
+    days.push(d)
+  }
+  // pad to complete last week
+  while (days.length % 7 !== 0) {
+    const d = new Date(days[days.length - 1])
+    d.setDate(d.getDate() + 1)
+    days.push(d)
+  }
+  return days
+}
+
 const priorityEmoji = { red: '🔴', yellow: '🟡', green: '🟢' }
-const priorityLabel = { red: '緊急', yellow: '重要', green: '優化' }
-const categoryLabel = { facebook: 'Facebook', google: 'Google', client: '客戶', keyword: '關鍵字' }
+const categoryLabel = { facebook: 'FB', google: 'Google', client: '客戶', keyword: '關鍵字' }
 
 export default function Tasks() {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedClient, setSelectedClient] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [viewMode, setViewMode] = useState('week') // 'week' | 'month'
   const [weekOffset, setWeekOffset] = useState(0)
+  const [monthDate, setMonthDate] = useState(new Date())
 
   // MD 解析
   const [showParser, setShowParser] = useState(false)
@@ -38,6 +57,7 @@ export default function Tasks() {
   const [completingTask, setCompletingTask] = useState(null)
   const [outcomeNote, setOutcomeNote] = useState('')
 
+  // 計算日期範圍
   const monday = getMonday(new Date())
   monday.setDate(monday.getDate() + weekOffset * 7)
   const weekDays = Array.from({ length: 5 }, (_, i) => {
@@ -45,16 +65,21 @@ export default function Tasks() {
     d.setDate(d.getDate() + i)
     return d
   })
-  const weekStart = formatDate(weekDays[0])
-  const weekEnd = formatDate(weekDays[4])
+
+  const monthDays = getMonthDays(monthDate.getFullYear(), monthDate.getMonth())
+  const currentMonth = monthDate.getMonth()
+
+  // 根據 viewMode 計算查詢範圍
+  const queryStart = viewMode === 'week' ? formatDate(weekDays[0]) : formatDate(monthDays[0])
+  const queryEnd = viewMode === 'week' ? formatDate(weekDays[4]) : formatDate(monthDays[monthDays.length - 1])
 
   async function loadTasks() {
     setLoading(true)
     let query = supabase
       .from('ad_tasks')
       .select('*')
-      .gte('scheduled_date', weekStart)
-      .lte('scheduled_date', weekEnd)
+      .gte('scheduled_date', queryStart)
+      .lte('scheduled_date', queryEnd)
       .order('scheduled_date')
       .order('scheduled_time')
 
@@ -67,7 +92,7 @@ export default function Tasks() {
     setLoading(false)
   }
 
-  useEffect(() => { loadTasks() }, [weekOffset, selectedClient, statusFilter])
+  useEffect(() => { loadTasks() }, [queryStart, queryEnd, selectedClient, statusFilter])
 
   const clients = [...new Set(tasks.map(t => t.client_name))]
 
@@ -79,6 +104,13 @@ export default function Tasks() {
   function getDayTotal(date) {
     return getTasksForDay(date).reduce((sum, t) => sum + (t.estimated_minutes || 0), 0)
   }
+
+  // 統計
+  const totalTasks = tasks.length
+  const doneTasks = tasks.filter(t => t.status === 'done').length
+  const pendingTasks = totalTasks - doneTasks
+  const totalMinutes = tasks.reduce((s, t) => s + (t.estimated_minutes || 0), 0)
+  const doneMinutes = tasks.filter(t => t.status === 'done').reduce((s, t) => s + (t.estimated_minutes || 0), 0)
 
   // MD 解析
   async function handleParse() {
@@ -137,7 +169,64 @@ export default function Tasks() {
     loadTasks()
   }
 
+  // 導覽
+  function handlePrev() {
+    if (viewMode === 'week') setWeekOffset(w => w - 1)
+    else setMonthDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))
+  }
+  function handleNext() {
+    if (viewMode === 'week') setWeekOffset(w => w + 1)
+    else setMonthDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))
+  }
+  function handleToday() {
+    if (viewMode === 'week') setWeekOffset(0)
+    else setMonthDate(new Date())
+  }
+
+  const dateLabel = viewMode === 'week'
+    ? `${weekDays[0].toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })} – ${weekDays[4].toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}`
+    : `${monthDate.getFullYear()} 年 ${monthDate.getMonth() + 1} 月`
+
   const dayNames = ['週一', '週二', '週三', '週四', '週五']
+  const monthDayNames = ['一', '二', '三', '四', '五', '六', '日']
+
+  // 任務卡片元件
+  function TaskCard({ task, compact }) {
+    const isDone = task.status === 'done'
+    return (
+      <div
+        onClick={() => { if (!isDone) { setCompletingTask(task); setOutcomeNote('') } }}
+        className={`rounded-lg p-2 text-xs transition ${
+          isDone
+            ? 'bg-green-900/20 border border-green-700/50 cursor-default'
+            : 'bg-gray-700 hover:bg-gray-600 border border-gray-600 cursor-pointer'
+        }`}
+      >
+        <div className="flex items-center gap-1">
+          {isDone ? <span>✅</span> : <span>{priorityEmoji[task.priority]}</span>}
+          {!compact && <span className="text-gray-400">{task.scheduled_time?.slice(0, 5)}</span>}
+          {task.category && <span className="text-gray-500 ml-auto">{categoryLabel[task.category] || task.category}</span>}
+        </div>
+        <p className={`font-medium mt-0.5 ${isDone ? 'text-green-400' : 'text-white'}`}>
+          {compact ? task.client_name : `[${task.client_name}]`}
+        </p>
+        <p className={`${isDone ? 'text-green-400/60 line-through' : 'text-gray-300'}`}>
+          {task.task}
+        </p>
+        {!compact && <p className="text-gray-500">{task.estimated_minutes}min</p>}
+        {isDone && task.outcome_note && (
+          <p className="text-green-400 mt-1 border-t border-green-800/50 pt-1">
+            📊 {task.outcome_note}
+          </p>
+        )}
+        {isDone && task.completed_at && (
+          <p className="text-green-600 text-[10px] mt-0.5">
+            {new Date(task.completed_at).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 完成
+          </p>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -149,6 +238,26 @@ export default function Tasks() {
         >
           {showParser ? '收起' : '+ 解析 MD 排程'}
         </button>
+      </div>
+
+      {/* 統計摘要 */}
+      <div className="grid grid-cols-4 gap-3">
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 text-center">
+          <p className="text-2xl font-bold text-white">{totalTasks}</p>
+          <p className="text-xs text-gray-400">總任務</p>
+        </div>
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 text-center">
+          <p className="text-2xl font-bold text-green-400">{doneTasks}</p>
+          <p className="text-xs text-gray-400">已完成</p>
+        </div>
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 text-center">
+          <p className="text-2xl font-bold text-yellow-400">{pendingTasks}</p>
+          <p className="text-xs text-gray-400">待處理</p>
+        </div>
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 text-center">
+          <p className="text-2xl font-bold text-blue-400">{doneMinutes}/{totalMinutes}</p>
+          <p className="text-xs text-gray-400">分鐘</p>
+        </div>
       </div>
 
       {/* MD 解析區 */}
@@ -216,42 +325,52 @@ export default function Tasks() {
         </div>
       )}
 
-      {/* 週導覽 + 篩選 */}
+      {/* 導覽 + 切換 + 篩選 */}
       <div className="flex flex-wrap items-center gap-3">
-        <button onClick={() => setWeekOffset(w => w - 1)}
-          className="bg-gray-700 text-gray-300 px-3 py-2 rounded-lg hover:bg-gray-600">◀</button>
-        <span className="text-white font-medium">
-          {weekDays[0].toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}
-          {' – '}
-          {weekDays[4].toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}
-        </span>
-        <button onClick={() => setWeekOffset(w => w + 1)}
-          className="bg-gray-700 text-gray-300 px-3 py-2 rounded-lg hover:bg-gray-600">▶</button>
-        <button onClick={() => setWeekOffset(0)}
-          className="bg-gray-700 text-gray-300 px-3 py-1 rounded-lg hover:bg-gray-600 text-sm">本週</button>
+        {/* 週/月切換 */}
+        <div className="flex bg-gray-700 rounded-lg overflow-hidden">
+          <button onClick={() => setViewMode('week')}
+            className={`px-3 py-1.5 text-sm transition ${viewMode === 'week' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+            週
+          </button>
+          <button onClick={() => setViewMode('month')}
+            className={`px-3 py-1.5 text-sm transition ${viewMode === 'month' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+            月
+          </button>
+        </div>
+
+        <button onClick={handlePrev}
+          className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">◀</button>
+        <span className="text-white font-medium min-w-[140px] text-center">{dateLabel}</span>
+        <button onClick={handleNext}
+          className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">▶</button>
+        <button onClick={handleToday}
+          className="bg-gray-700 text-gray-300 px-3 py-1 rounded-lg hover:bg-gray-600 text-sm">今天</button>
 
         <select value={selectedClient} onChange={(e) => setSelectedClient(e.target.value)}
-          className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white ml-auto">
+          className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white ml-auto">
           <option value="all">全部客戶</option>
           {clients.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white">
+          className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white">
           <option value="all">全部狀態</option>
           <option value="pending">待處理</option>
           <option value="done">已完成</option>
         </select>
       </div>
 
-      {/* 週時程表 */}
+      {/* 時程表 */}
       {loading ? (
         <div className="text-center py-10 text-gray-400">載入中...</div>
-      ) : (
+      ) : viewMode === 'week' ? (
+        /* ========== 週檢視 ========== */
         <div className="grid grid-cols-5 gap-3">
           {weekDays.map((day, di) => {
             const dayTasks = getTasksForDay(day)
             const totalMin = getDayTotal(day)
             const isToday = formatDate(day) === formatDate(new Date())
+            const doneCount = dayTasks.filter(t => t.status === 'done').length
             return (
               <div key={di} className={`bg-gray-800 rounded-xl border ${isToday ? 'border-blue-500' : 'border-gray-700'} overflow-hidden`}>
                 <div className={`px-3 py-2 text-center border-b ${isToday ? 'border-blue-500 bg-blue-600/10' : 'border-gray-700'}`}>
@@ -259,45 +378,78 @@ export default function Tasks() {
                   <p className="text-xs text-gray-500">
                     {day.toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}
                   </p>
-                  {totalMin > 0 && (
-                    <p className={`text-xs mt-1 ${totalMin > 120 ? 'text-red-400' : 'text-gray-500'}`}>
-                      {totalMin} 分鐘
-                    </p>
+                  {dayTasks.length > 0 && (
+                    <div className="flex items-center justify-center gap-2 mt-1">
+                      <p className={`text-xs ${totalMin > 120 ? 'text-red-400' : 'text-gray-500'}`}>
+                        {totalMin}min
+                      </p>
+                      {doneCount > 0 && (
+                        <p className="text-xs text-green-500">{doneCount}/{dayTasks.length}✓</p>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="p-2 space-y-2 min-h-[120px]">
                   {dayTasks.length === 0 ? (
                     <p className="text-xs text-gray-600 text-center py-4">無任務</p>
                   ) : (
-                    dayTasks.map(task => (
-                      <div key={task.id}
-                        onClick={() => { if (task.status !== 'done') { setCompletingTask(task); setOutcomeNote('') } }}
-                        className={`rounded-lg p-2 text-xs cursor-pointer transition ${
-                          task.status === 'done'
-                            ? 'bg-green-900/20 border border-green-800'
-                            : 'bg-gray-700 hover:bg-gray-600 border border-gray-600'
-                        }`}>
-                        <div className="flex items-center gap-1 mb-1">
-                          <span>{priorityEmoji[task.priority]}</span>
-                          <span className="text-gray-400">{task.scheduled_time?.slice(0, 5)}</span>
-                        </div>
-                        <p className={`font-medium ${task.status === 'done' ? 'text-green-400 line-through' : 'text-white'}`}>
-                          [{task.client_name}]
-                        </p>
-                        <p className={`${task.status === 'done' ? 'text-green-400/70' : 'text-gray-300'}`}>
-                          {task.task}
-                        </p>
-                        <p className="text-gray-500">{task.estimated_minutes}min</p>
-                        {task.status === 'done' && task.outcome_note && (
-                          <p className="text-green-400 mt-1">📊 {task.outcome_note}</p>
-                        )}
-                      </div>
-                    ))
+                    dayTasks.map(task => <TaskCard key={task.id} task={task} compact={false} />)
                   )}
                 </div>
               </div>
             )
           })}
+        </div>
+      ) : (
+        /* ========== 月檢視 ========== */
+        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+          {/* 星期標頭 */}
+          <div className="grid grid-cols-7 border-b border-gray-700">
+            {monthDayNames.map(name => (
+              <div key={name} className="px-2 py-2 text-center text-xs font-semibold text-gray-400">
+                {name}
+              </div>
+            ))}
+          </div>
+          {/* 日期格子 */}
+          <div className="grid grid-cols-7">
+            {monthDays.map((day, i) => {
+              const dayTasks = getTasksForDay(day)
+              const isToday = formatDate(day) === formatDate(new Date())
+              const isCurrentMonth = day.getMonth() === currentMonth
+              const doneCount = dayTasks.filter(t => t.status === 'done').length
+              const pendingCount = dayTasks.length - doneCount
+              const isWeekend = day.getDay() === 0 || day.getDay() === 6
+              return (
+                <div key={i} className={`min-h-[100px] border-b border-r border-gray-700 p-1.5 ${
+                  !isCurrentMonth ? 'bg-gray-800/50' : ''
+                } ${isToday ? 'bg-blue-900/10' : ''} ${isWeekend ? 'bg-gray-800/30' : ''}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-xs font-medium ${
+                      isToday ? 'bg-blue-600 text-white px-1.5 py-0.5 rounded-full'
+                      : isCurrentMonth ? 'text-gray-300' : 'text-gray-600'
+                    }`}>
+                      {day.getDate()}
+                    </span>
+                    {dayTasks.length > 0 && (
+                      <span className="text-[10px] text-gray-500">
+                        {doneCount > 0 && <span className="text-green-500">{doneCount}✓</span>}
+                        {pendingCount > 0 && <span className="text-yellow-500 ml-1">{pendingCount}</span>}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    {dayTasks.slice(0, 3).map(task => (
+                      <TaskCard key={task.id} task={task} compact={true} />
+                    ))}
+                    {dayTasks.length > 3 && (
+                      <p className="text-[10px] text-gray-500 text-center">+{dayTasks.length - 3} 更多</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -319,6 +471,7 @@ export default function Tasks() {
                 className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="例：ROAS 從 19 升到 23"
                 autoFocus />
+              <p className="text-xs text-gray-500 mt-1">有填備註會自動帶入下次報告</p>
             </div>
             <div className="flex space-x-2">
               <button onClick={() => handleComplete(completingTask.id)}
