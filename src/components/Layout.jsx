@@ -6,6 +6,7 @@ export default function Layout() {
     { path: '/clients', label: '客戶管理', icon: '👥' },
     { path: '/reports', label: '報告列表', icon: '📊' },
     { path: '/reports/new', label: '建立報告', icon: '➕' },
+    { path: '/tasks', label: '廣告任務', icon: '📋' },
     { path: '/agent', label: '智慧媽咪', icon: '🤖' },
     { path: '/agent/messages', label: '客戶訊息', icon: '💬' },
     { path: '/agent/tasks', label: '任務管理', icon: '📋' },
