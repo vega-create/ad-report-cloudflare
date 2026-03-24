@@ -172,6 +172,72 @@ export default function Guide() {
         </div>
       </div>
 
+      {/* 快速記錄（不需報告的客戶） */}
+      <div className="bg-gray-800 rounded-xl border border-green-700/50 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="bg-green-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">⚡</span>
+          <h2 className="text-lg font-semibold text-white">快速記錄（不需完整報告的客戶）</h2>
+        </div>
+        <p className="text-gray-300">
+          有些客戶不需要產出完整報告，但你仍需追蹤花費、廣告時間和下次調整方向。
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-green-400 font-semibold">方式 A：網頁快速新增</p>
+            <p className="text-gray-300 text-sm">
+              在「廣告任務」頁面點 <span className="bg-green-600 text-white px-2 py-0.5 rounded text-sm">+ 快速新增</span>
+            </p>
+            <div className="space-y-1 text-sm text-gray-400">
+              <p>1. 選擇客戶 + 填寫任務內容</p>
+              <p>2. 設定日期、時間、優先級</p>
+              <p>3. 備註欄記錄花費金額和調整方向</p>
+              <p>4. 任務會出現在行事曆，LINE 照常提醒</p>
+            </div>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-green-400 font-semibold">方式 B：Claude 快速記錄</p>
+            <p className="text-gray-300 text-sm">
+              在 Claude Code 使用 <code className="bg-gray-700 px-1 rounded text-xs">/ad-quick-log</code> 指令
+            </p>
+            <div className="space-y-1 text-sm text-gray-400">
+              <p>1. 告知客戶名、本期花費、廣告期間</p>
+              <p>2. 說明下次要調整的方向</p>
+              <p>3. Claude 產出結構化 MD</p>
+              <p>4. 貼入「解析 MD 排程」自動建立任務</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-gray-900 rounded-lg p-4 text-sm">
+          <p className="text-white font-medium mb-2">備註欄範例</p>
+          <div className="space-y-1 text-gray-400">
+            <p>• 本月花費 $15,000 / 廣告期間 3/1-3/31</p>
+            <p>• 下次調降 CPC 出價、暫停低轉換受眾</p>
+            <p>• ROAS 目前 15，目標拉到 20</p>
+          </div>
+          <p className="text-gray-500 text-xs mt-2">
+            💡 完成任務時的「成效備註」會自動帶入下次報告
+          </p>
+        </div>
+      </div>
+
+      {/* 排定時間提醒 */}
+      <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="bg-orange-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">⏰</span>
+          <h2 className="text-lg font-semibold text-white">排定時間提醒</h2>
+        </div>
+        <p className="text-gray-300">
+          除了每天 09:00 的總覽提醒，系統每 <span className="text-white font-bold">5 分鐘</span>檢查是否有到期任務，
+          到了排定時間會再推一次 LINE 提醒。
+        </p>
+        <div className="bg-gray-900 rounded-lg p-4 text-sm space-y-1">
+          <p className="text-white font-medium">⏰ 廣告任務提醒</p>
+          <p className="text-gray-400">🟡 [寵樂芙] 調整 ROAS 出價</p>
+          <p className="text-gray-400">⏱️ 預估 30 分鐘</p>
+          <p className="text-gray-400">🕐 排定時間：10:00</p>
+        </div>
+      </div>
+
       {/* 優先級規則 */}
       <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
         <h2 className="text-lg font-semibold text-white">優先級與排程規則</h2>

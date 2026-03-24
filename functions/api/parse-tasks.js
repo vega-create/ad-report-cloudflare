@@ -20,8 +20,10 @@ export async function onRequestPost(context) {
       throw new Error("OPENAI_API_KEY not configured");
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    const dayOfWeek = ['日','一','二','三','四','五','六'][new Date().getDay()];
+    // 使用台灣時間（UTC+8）
+    const nowTW = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+    const today = `${nowTW.getFullYear()}-${String(nowTW.getMonth() + 1).padStart(2, '0')}-${String(nowTW.getDate()).padStart(2, '0')}`;
+    const dayOfWeek = ['日','一','二','三','四','五','六'][nowTW.getDay()];
 
     const prompt = `你是廣告投手 Vega 的任務助理。請分析以下廣告操作規劃 Markdown，提取所有待辦任務。
 

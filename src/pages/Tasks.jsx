@@ -12,7 +12,10 @@ function getMonday(d) {
 }
 
 function formatDate(d) {
-  return d.toISOString().split('T')[0]
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function getMonthDays(year, month) {
@@ -54,7 +57,17 @@ export default function Tasks() {
   const [isParsing, setIsParsing] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
-  // 完成任務
+  // 快速新增任務
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [quickTask, setQuickTask] = useState('')
+  const [quickPriority, setQuickPriority] = useState('yellow')
+  const [quickCategory, setQuickCategory] = useState('facebook')
+  const [quickDate, setQuickDate] = useState(formatDate(new Date()))
+  const [quickTime, setQuickTime] = useState('10:00')
+  const [quickMinutes, setQuickMinutes] = useState(30)
+  const [quickClient, setQuickClient] = useState('')
+  const [quickNote, setQuickNote] = useState('')
+
   // 完成任務
   const [completingTask, setCompletingTask] = useState(null)
   const [outcomeNote, setOutcomeNote] = useState('')
@@ -147,7 +160,7 @@ export default function Tasks() {
   async function handleConfirmSave() {
     const rows = parsedTasks.map(t => ({
       client_name: clientName,
-      report_date: reportDate || new Date().toISOString().split('T')[0],
+      report_date: reportDate || formatDate(new Date()),
       task: t.task,
       category: t.category,
       priority: t.priority,
@@ -162,6 +175,28 @@ export default function Tasks() {
     setShowParser(false)
     setMarkdown('')
     setClientName('')
+    loadTasks()
+  }
+
+  // 快速新增任務
+  async function handleQuickAdd() {
+    if (!quickTask.trim() || !quickClient.trim()) return
+    const row = {
+      client_name: quickClient,
+      report_date: quickDate,
+      task: quickTask,
+      category: quickCategory,
+      priority: quickPriority,
+      estimated_minutes: quickMinutes,
+      scheduled_date: quickDate,
+      scheduled_time: quickTime,
+      status: 'pending',
+      outcome_note: quickNote || null,
+    }
+    await supabase.from('ad_tasks').insert([row])
+    setShowQuickAdd(false)
+    setQuickTask('')
+    setQuickNote('')
     loadTasks()
   }
 
@@ -241,12 +276,20 @@ export default function Tasks() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-white">廣告任務</h1>
-        <button
-          onClick={() => setShowParser(!showParser)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-        >
-          {showParser ? '收起' : '+ 解析 MD 排程'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setShowQuickAdd(true); setQuickClient(''); setQuickDate(formatDate(new Date())) }}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+          >
+            + 快速新增
+          </button>
+          <button
+            onClick={() => setShowParser(!showParser)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          >
+            {showParser ? '收起' : '+ 解析 MD 排程'}
+          </button>
+        </div>
       </div>
 
       {/* 統計摘要 */}
@@ -460,6 +503,88 @@ export default function Tasks() {
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* 快速新增 Modal */}
+      {showQuickAdd && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowQuickAdd(false)}>
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-white">快速新增任務</h3>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">客戶</label>
+              <select value={quickClient} onChange={e => setQuickClient(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                <option value="">請選擇</option>
+                {clients.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">任務內容</label>
+              <input type="text" value={quickTask} onChange={e => setQuickTask(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                placeholder="例：調整 ROAS 出價" autoFocus />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">日期</label>
+                <input type="date" value={quickDate} onChange={e => setQuickDate(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">時間</label>
+                <input type="time" value={quickTime} onChange={e => setQuickTime(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">優先級</label>
+                <select value={quickPriority} onChange={e => setQuickPriority(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                  <option value="red">🔴 緊急</option>
+                  <option value="yellow">🟡 重要</option>
+                  <option value="green">🟢 優化</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">分類</label>
+                <select value={quickCategory} onChange={e => setQuickCategory(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                  <option value="facebook">FB</option>
+                  <option value="google">Google</option>
+                  <option value="client">客戶</option>
+                  <option value="keyword">關鍵字</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">預估</label>
+                <select value={quickMinutes} onChange={e => setQuickMinutes(Number(e.target.value))}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                  <option value={15}>15 分</option>
+                  <option value={30}>30 分</option>
+                  <option value={45}>45 分</option>
+                  <option value={60}>60 分</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">備註（花費/調整方向）</label>
+              <input type="text" value={quickNote} onChange={e => setQuickNote(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                placeholder="例：本月花費 $15,000、下次調降 CPC" />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleQuickAdd} disabled={!quickTask.trim() || !quickClient}
+                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50">
+                新增
+              </button>
+              <button onClick={() => setShowQuickAdd(false)}
+                className="bg-gray-700 text-gray-300 px-6 py-2 rounded-lg hover:bg-gray-600 transition">
+                取消
+              </button>
+            </div>
           </div>
         </div>
       )}
