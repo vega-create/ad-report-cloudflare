@@ -122,17 +122,19 @@ export default function Guide() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-gray-900 rounded-lg p-4 space-y-2">
             <p className="text-green-400 font-semibold">方式 A：LINE 回報</p>
-            <p className="text-gray-300 text-sm">直接在 LINE 群組說：</p>
-            <div className="bg-gray-800 rounded p-2 text-sm">
-              <p className="text-white">「寵樂芙 ROAS 調整完成，升到 23」</p>
+            <p className="text-gray-300 text-sm">在主管群組說「完成」即可：</p>
+            <div className="bg-gray-800 rounded p-2 text-sm space-y-1">
+              <p className="text-white">「寵樂芙 ROAS 調整完成」</p>
+              <p className="text-gray-500 text-xs">或加上成效備註：</p>
+              <p className="text-white">「Bluebulous GMC 串接完成，已修復」</p>
             </div>
-            <p className="text-gray-500 text-xs">→ AI 自動比對任務 + 記錄成效備註</p>
+            <p className="text-gray-500 text-xs">→ 自動比對今日任務 + 顯示進度</p>
             <div className="border-t border-gray-700 pt-2 mt-2">
               <p className="text-gray-400 text-xs">LINE 回覆：</p>
               <p className="text-green-400 text-xs">✅ 廣告任務完成：[寵樂芙] 調整 ROAS 出價</p>
-              <p className="text-green-400 text-xs">📊 成效：ROAS 升到 23</p>
-              <p className="text-green-400 text-xs">（已標記帶入下次報告）</p>
+              <p className="text-green-400 text-xs">📊 今日廣告進度 3/12</p>
             </div>
+            <p className="text-gray-500 text-xs mt-1">💡 加成效備註會自動帶入下次報告</p>
           </div>
           <div className="bg-gray-900 rounded-lg p-4 space-y-2">
             <p className="text-green-400 font-semibold">方式 B：網頁點擊</p>
@@ -235,6 +237,74 @@ export default function Guide() {
           <p className="text-gray-400">🟡 [寵樂芙] 調整 ROAS 出價</p>
           <p className="text-gray-400">⏱️ 預估 30 分鐘</p>
           <p className="text-gray-400">🕐 排定時間：10:00</p>
+        </div>
+      </div>
+
+      {/* 員工待辦清單 */}
+      <div className="bg-gray-800 rounded-xl border border-cyan-700/50 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="bg-cyan-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">📝</span>
+          <h2 className="text-lg font-semibold text-white">員工待辦清單（LINE 指令）</h2>
+        </div>
+        <p className="text-gray-300 text-sm">
+          員工在自己的群組、老闆在主管群組都可以使用以下指令管理每日待辦。
+        </p>
+
+        <div className="space-y-4">
+          {/* 建立待辦 */}
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-cyan-400 font-semibold">建立今日待辦</p>
+            <p className="text-gray-400 text-sm">在群組輸入 <code className="bg-gray-700 px-1 rounded text-white">#今日待辦</code>，接著列出任務：</p>
+            <div className="bg-gray-800 rounded p-3 text-sm space-y-1">
+              <p className="text-white">#今日待辦</p>
+              <p className="text-gray-400">1. [智慧媽咪] FB貼文</p>
+              <p className="text-gray-400">2. [寵樂芙] IG限動</p>
+              <p className="text-gray-400">3. 回覆客戶訊息</p>
+            </div>
+          </div>
+
+          {/* 指令列表 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+              <p className="text-green-400 font-semibold">回報完成</p>
+              <div className="text-sm text-gray-400 space-y-1">
+                <p>「智慧媽咪貼文 <span className="text-white">完成</span>」</p>
+                <p>「<span className="text-white">完成</span> 寵樂芙限動」</p>
+                <p>「回覆客戶 <span className="text-white">做好了</span>」</p>
+              </div>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+              <p className="text-blue-400 font-semibold">新增任務</p>
+              <div className="text-sm text-gray-400 space-y-1">
+                <p>「<span className="text-white">新增</span> 製作週報」</p>
+                <p>「<span className="text-white">加一個</span> 回電給廠商」</p>
+                <p>「<span className="text-white">增加</span> 整理檔案」</p>
+              </div>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+              <p className="text-red-400 font-semibold">取消任務</p>
+              <div className="text-sm text-gray-400 space-y-1">
+                <p>「<span className="text-white">取消</span> FB貼文」</p>
+                <p>「<span className="text-white">刪除</span> 智慧媽咪貼文」</p>
+              </div>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+              <p className="text-yellow-400 font-semibold">改期 / 查進度</p>
+              <div className="text-sm text-gray-400 space-y-1">
+                <p>「智慧媽咪貼文 <span className="text-white">改到週三</span>」</p>
+                <p>「寵樂芙限動 <span className="text-white">延到下週</span>」</p>
+                <p>「<span className="text-white">#查進度</span>」→ 顯示完成率</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 自動提醒 */}
+          <div className="bg-gray-900 rounded-lg p-4 text-sm text-gray-400 space-y-1">
+            <p className="text-white font-medium mb-2">自動提醒時間</p>
+            <p>☀️ 每天 <span className="text-white">09:00</span> → 系統自動把排程任務建成今日待辦並通知</p>
+            <p>🌙 每天 <span className="text-white">19:00</span> → 未完成任務提醒</p>
+            <p>💡 不用打得一模一樣，系統會用 AI 自動比對</p>
+          </div>
         </div>
       </div>
 

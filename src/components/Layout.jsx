@@ -13,6 +13,7 @@ export default function Layout() {
     { path: '/agent/messages', label: '客戶訊息', icon: '💬' },
     { path: '/agent/tasks', label: '任務管理', icon: '📋' },
     { path: '/guide', label: '使用說明', icon: '📖' },
+    { path: '/architecture', label: '系統架構', icon: '🏗️' },
   ]
   return (
     <div className="min-h-screen bg-gray-900 flex">
