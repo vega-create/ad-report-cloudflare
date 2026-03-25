@@ -70,6 +70,8 @@ export default function AgentTasks() {
 
   async function handleDelete(id) {
     if (!confirm('確定要刪除這個任務嗎？')) return
+    // 先刪關聯的 task_records，再刪任務
+    await supabase.from('agent_task_records').delete().eq('task_id', id)
     await supabase.from('agent_tasks').delete().eq('id', id)
     loadData()
   }
