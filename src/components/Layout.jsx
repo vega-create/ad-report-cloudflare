@@ -14,6 +14,7 @@ export default function Layout() {
     { path: '/agent/tasks', label: '任務管理', icon: '📋' },
     { path: '/guide', label: '使用說明', icon: '📖' },
     { path: '/architecture', label: '系統架構', icon: '🏗️' },
+    { path: 'https://short-url.quickhub.cc/vega888admin', label: '短網址', icon: '🔗', external: true },
   ]
   return (
     <div className="min-h-screen bg-gray-900 flex">
@@ -26,10 +27,17 @@ export default function Layout() {
           <ul className="space-y-2">
             {navItems.map((item) => (
               <li key={item.path}>
-                <Link to={item.path} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${location.pathname === item.path ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
-                  <span>{item.icon}</span>
-                  <span>{item.label}</span>
-                </Link>
+                {item.external ? (
+                  <a href={item.path} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-300 hover:bg-gray-700">
+                    <span>{item.icon}</span>
+                    <span>{item.label}</span>
+                  </a>
+                ) : (
+                  <Link to={item.path} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${location.pathname === item.path ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+                    <span>{item.icon}</span>
+                    <span>{item.label}</span>
+                  </Link>
+                )}
               </li>
             ))}
           </ul>

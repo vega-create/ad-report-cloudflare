@@ -58,7 +58,7 @@ export default function Architecture() {
                 <td className="py-2 px-3 font-medium text-white">short-url</td>
                 <td className="py-2 px-3">Vercel</td>
                 <td className="py-2 px-3">短網址服務</td>
-                <td className="py-2 px-3 text-gray-500 text-xs">-</td>
+                <td className="py-2 px-3 text-blue-400 text-xs">short-url.quickhub.cc</td>
               </tr>
             </tbody>
           </table>

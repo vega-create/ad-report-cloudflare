@@ -11,8 +11,27 @@ export default function NewReport() {
   const [content, setContent] = useState('')
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [completedTasks, setCompletedTasks] = useState([])
 
   useEffect(() => { fetchClients() }, [])
+
+  // 選擇客戶時，自動載入該客戶已完成且有成效的任務
+  useEffect(() => {
+    if (!selectedClient) { setCompletedTasks([]); return }
+    const fetchCompletedTasks = async () => {
+      const client = clients.find(c => c.id === selectedClient)
+      if (!client) return
+      const { data } = await supabase
+        .from('ad_tasks')
+        .select('*')
+        .eq('client_name', client.name)
+        .eq('status', 'done')
+        .eq('include_in_next_report', true)
+        .order('completed_at')
+      setCompletedTasks(data || [])
+    }
+    fetchCompletedTasks()
+  }, [selectedClient, clients])
 
   const fetchClients = async () => {
     try {
@@ -34,8 +53,27 @@ export default function NewReport() {
         status: 'draft'
       }]).select().single()
       if (error) throw error
+      await markTasksConsumed()
       navigate(`/reports/${report.id}`)
     } catch (error) { alert('儲存失敗: ' + error.message) } finally { setSaving(false) }
+  }
+
+  const insertOutcomes = () => {
+    if (completedTasks.length === 0) return
+    let section = '\n\n## 本期執行成效\n\n'
+    completedTasks.forEach(t => {
+      section += `- ✅ ${t.task}`
+      if (t.outcome_note) section += ` → ${t.outcome_note}`
+      section += '\n'
+    })
+    setContent(prev => prev + section)
+  }
+
+  const markTasksConsumed = async () => {
+    const ids = completedTasks.map(t => t.id)
+    if (ids.length === 0) return
+    await supabase.from('ad_tasks').update({ include_in_next_report: false }).in('id', ids)
+    setCompletedTasks([])
   }
 
   return (
@@ -60,6 +98,26 @@ export default function NewReport() {
           {clients.map((client) => (<option key={client.id} value={client.id}>{client.name} {client.industry ? `(${client.industry})` : ''}</option>))}
         </select>
       </div>
+
+      {/* 已完成任務成效 */}
+      {completedTasks.length > 0 && (
+        <div className="mb-6 bg-green-900/20 border border-green-700/50 rounded-xl p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-green-400 font-semibold">📊 上期已完成任務（{completedTasks.length} 項有成效記錄）</h3>
+            <button onClick={insertOutcomes} className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">
+              插入到報告
+            </button>
+          </div>
+          <div className="space-y-1 text-sm">
+            {completedTasks.map(t => (
+              <div key={t.id} className="text-gray-300">
+                ✅ {t.task}{t.outcome_note && <span className="text-green-400"> → {t.outcome_note}</span>}
+              </div>
+            ))}
+          </div>
+          <p className="text-gray-500 text-xs mt-2">點「插入到報告」會加到 MD 尾端，儲存報告後這些任務會標記為已引用</p>
+        </div>
+      )}
 
       {/* Markdown 編輯器 / 預覽 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
