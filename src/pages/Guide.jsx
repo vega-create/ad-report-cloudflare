@@ -308,6 +308,166 @@ export default function Guide() {
         </div>
       </div>
 
+      {/* 廣告任務取消 / 改期 */}
+      <div className="bg-gray-800 rounded-xl border border-red-700/50 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">🗑️</span>
+          <h2 className="text-lg font-semibold text-white">廣告任務取消 / 改期</h2>
+        </div>
+        <p className="text-gray-300">
+          排定的廣告任務可能需要更動或取消，可以用 LINE 或網頁操作。
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-red-400 font-semibold">方式 A：LINE 指令</p>
+            <p className="text-gray-400 text-sm">在主管群組說：</p>
+            <div className="bg-gray-800 rounded p-3 text-sm space-y-2">
+              <div>
+                <p className="text-gray-500 text-xs mb-1">取消任務：</p>
+                <p className="text-white">「3 piglets cleaning 素材 A/B 測試規劃 <span className="text-red-400">取消</span>」</p>
+                <p className="text-white">「<span className="text-red-400">取消</span> 寵樂芙 ROAS 調整」</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs mb-1">延後到明天：</p>
+                <p className="text-white">「<span className="text-blue-400">延後</span> 寵樂芙 素材替換」</p>
+                <p className="text-white">「3 piglets <span className="text-blue-400">改期</span>」</p>
+              </div>
+            </div>
+            <div className="border-t border-gray-700 pt-2 mt-2">
+              <p className="text-gray-400 text-xs">LINE 回覆：</p>
+              <p className="text-red-400 text-xs">🗑️ 已取消廣告任務：[3 piglets cleaning] 素材 A/B 測試規劃</p>
+              <p className="text-blue-400 text-xs">📅 已延後廣告任務到明天：[寵樂芙] 素材替換</p>
+            </div>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-red-400 font-semibold">方式 B：網頁操作</p>
+            <p className="text-gray-300 text-sm">在「廣告任務」頁面點擊待處理的任務：</p>
+            <div className="space-y-1 text-sm text-gray-400">
+              <p><span className="text-green-400">✅ 完成</span> → 標記完成 + 填成效備註</p>
+              <p><span className="text-blue-400">📅 延後一天</span> → 自動移到明天</p>
+              <p><span className="text-red-400">🗑️ 取消任務</span> → 標記為已取消</p>
+              <p><span className="text-yellow-400">改期</span> → 用日期選擇器改到任何日期</p>
+            </div>
+            <div className="border-t border-gray-700 pt-2 mt-2">
+              <p className="text-gray-400 text-xs">取消的任務：</p>
+              <p className="text-gray-400 text-xs">🗑️ 紅色半透明 + 刪除線顯示</p>
+              <p className="text-gray-400 text-xs">不能再操作，不計入進度</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-gray-900 rounded-lg p-4 text-sm text-gray-400 space-y-1">
+          <p>💡 LINE 取消和網頁操作是同步的，改了其中一邊另一邊自動更新</p>
+          <p>💡 關鍵字：<span className="text-white">取消、不做了</span> → 取消任務；<span className="text-white">延後、改期</span> → 移到明天</p>
+          <p>💡 篩選器可以選「已取消」查看所有取消過的任務</p>
+        </div>
+      </div>
+
+      {/* 提案功能 */}
+      <div className="bg-gray-800 rounded-xl border border-purple-700/50 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">📑</span>
+          <h2 className="text-lg font-semibold text-white">提案功能</h2>
+        </div>
+        <p className="text-gray-300">
+          為新客戶或舊客戶的新活動 / 新品建立完整行銷提案，產生可分享的客戶連結。
+        </p>
+
+        <div className="space-y-4">
+          {/* 建立提案 */}
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-purple-400 font-semibold">建立提案</p>
+            <div className="space-y-1 text-sm text-gray-400">
+              <p>1. 側邊欄點「📑 提案」→ 進入提案列表</p>
+              <p>2. 點右上角 <span className="bg-green-600 text-white px-2 py-0.5 rounded text-xs">+ 新增提案</span></p>
+              <p>3. 填寫<span className="text-white">標題</span>、選擇<span className="text-white">客戶</span>（選填）</p>
+              <p>4. 左邊編輯 <span className="text-white">Markdown 內容</span>，右邊即時預覽</p>
+              <p>5. 點<span className="text-white">「儲存」</span></p>
+            </div>
+          </div>
+
+          {/* 編輯預覽 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+              <p className="text-purple-400 font-semibold">編輯器</p>
+              <p className="text-gray-400 text-sm">左邊輸入 Markdown 格式：</p>
+              <div className="bg-gray-800 rounded p-2 text-xs text-gray-400 space-y-1 font-mono">
+                <p className="text-white">## 行銷方案</p>
+                <p>### 目標受眾</p>
+                <p>- 25-35 歲媽媽族群</p>
+                <p className="text-white">### 預算分配</p>
+                <p>| 平台 | 預算 | 佔比 |</p>
+                <p>|------|------|------|</p>
+                <p>| Facebook | $30,000 | 60% |</p>
+              </div>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+              <p className="text-purple-400 font-semibold">操作按鈕</p>
+              <div className="space-y-2 text-sm text-gray-400">
+                <p><span className="text-green-400">✅ 發布</span> → 標記為已發布</p>
+                <p><span className="text-gray-300">📥 下載 PDF</span> → 匯出 PDF 檔案</p>
+                <p><span className="text-gray-300">🔗 複製連結</span> → 複製公開連結</p>
+                <p><span className="text-blue-400">✏️ 編輯</span> → 修改提案內容</p>
+              </div>
+              <p className="text-gray-500 text-xs mt-2">
+                💡 提案可能需要修改好幾次，儲存後隨時可以再編輯
+              </p>
+            </div>
+          </div>
+
+          {/* 分享提案 */}
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-purple-400 font-semibold">分享給客戶</p>
+            <div className="space-y-1 text-sm text-gray-400">
+              <p>1. 在提案詳情頁點 <span className="text-gray-300">🔗 複製連結</span></p>
+              <p>2. 連結格式：<code className="bg-gray-700 px-1 rounded text-xs text-white">/p/提案ID</code></p>
+              <p>3. 客戶打開連結可以看到完整提案（紫色主題、無後台側欄）</p>
+              <p>4. 客戶也可以自行下載 PDF</p>
+            </div>
+          </div>
+
+          {/* 提案用途 */}
+          <div className="bg-gray-900 rounded-lg p-4 text-sm text-gray-400 space-y-1">
+            <p className="text-white font-medium mb-2">適用場景</p>
+            <p>📌 新客戶的廣告行銷企劃</p>
+            <p>📌 舊客戶新活動 / 新品的廣告建議</p>
+            <p>📌 新排程規劃（可先放上提案確認後再執行）</p>
+            <p>📌 任何需要分享給客戶看的 Markdown 內容</p>
+          </div>
+        </div>
+      </div>
+
+      {/* 報告功能 */}
+      <div className="bg-gray-800 rounded-xl border border-blue-700/50 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">📊</span>
+          <h2 className="text-lg font-semibold text-white">廣告報告</h2>
+        </div>
+        <p className="text-gray-300">
+          產出客戶的廣告成效報告，可分享連結或下載 PDF。
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-blue-400 font-semibold">操作按鈕</p>
+            <div className="space-y-1 text-sm text-gray-400">
+              <p><span className="text-green-400">✅ 發布報告</span> → 標記為已發布</p>
+              <p><span className="text-gray-300">📥 下載 PDF</span> → 匯出 PDF 給客戶</p>
+              <p><span className="text-gray-300">🔗 複製連結</span> → 複製公開連結</p>
+              <p><span className="text-green-400">📱 發送到 LINE</span> → 推送到客戶 LINE 群組</p>
+              <p><span className="text-blue-400">✏️ 編輯</span> → 修改報告內容</p>
+            </div>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-blue-400 font-semibold">分享給客戶</p>
+            <div className="space-y-1 text-sm text-gray-400">
+              <p>連結格式：<code className="bg-gray-700 px-1 rounded text-xs text-white">/r/報告ID</code></p>
+              <p>客戶可以看到完整報告（藍色主題）</p>
+              <p>客戶也可以自行下載 PDF</p>
+              <p>也可以直接發送到客戶的 LINE 群組</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 優先級規則 */}
       <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
         <h2 className="text-lg font-semibold text-white">優先級與排程規則</h2>
