@@ -17,6 +17,11 @@ jobs:
       - run: npm ci
 
       - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_AGENT_SUPABASE_URL: ${{ secrets.VITE_AGENT_SUPABASE_URL }}
+          VITE_AGENT_SUPABASE_ANON_KEY: ${{ secrets.VITE_AGENT_SUPABASE_ANON_KEY }}
 
       - uses: cloudflare/wrangler-action@v3
         with:
