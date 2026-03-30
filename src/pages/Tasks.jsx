@@ -104,6 +104,7 @@ export default function Tasks() {
     if (selectedClient !== 'all') query = query.eq('client_name', selectedClient)
     if (statusFilter === 'pending') query = query.eq('status', 'pending')
     if (statusFilter === 'done') query = query.eq('status', 'done')
+    if (statusFilter === 'cancelled') query = query.eq('status', 'cancelled')
 
     const { data } = await query
     setTasks(data || [])
@@ -130,7 +131,8 @@ export default function Tasks() {
   // 統計
   const totalTasks = tasks.length
   const doneTasks = tasks.filter(t => t.status === 'done').length
-  const pendingTasks = totalTasks - doneTasks
+  const cancelledTasks = tasks.filter(t => t.status === 'cancelled').length
+  const pendingTasks = totalTasks - doneTasks - cancelledTasks
   const totalMinutes = tasks.reduce((s, t) => s + (t.estimated_minutes || 0), 0)
   const doneMinutes = tasks.filter(t => t.status === 'done').reduce((s, t) => s + (t.estimated_minutes || 0), 0)
 
@@ -213,6 +215,35 @@ export default function Tasks() {
     loadTasks()
   }
 
+  // 取消任務
+  async function handleCancel(taskId) {
+    await supabase.from('ad_tasks').update({ status: 'cancelled' }).eq('id', taskId)
+    setCompletingTask(null)
+    setOutcomeNote('')
+    loadTasks()
+  }
+
+  // 延後任務到明天
+  async function handlePostpone(taskId) {
+    const task = tasks.find(t => t.id === taskId)
+    if (!task) return
+    const date = new Date(task.scheduled_date)
+    date.setDate(date.getDate() + 1)
+    const newDate = formatDate(date)
+    await supabase.from('ad_tasks').update({ scheduled_date: newDate }).eq('id', taskId)
+    setCompletingTask(null)
+    setOutcomeNote('')
+    loadTasks()
+  }
+
+  // 修改任務日期
+  async function handleReschedule(taskId, newDate) {
+    await supabase.from('ad_tasks').update({ scheduled_date: newDate }).eq('id', taskId)
+    setCompletingTask(null)
+    setOutcomeNote('')
+    loadTasks()
+  }
+
   // 導覽
   function handlePrev() {
     if (viewMode === 'week') setWeekOffset(w => w - 1)
@@ -237,27 +268,32 @@ export default function Tasks() {
   // 任務卡片元件
   function TaskCard({ task, compact }) {
     const isDone = task.status === 'done'
+    const isCancelled = task.status === 'cancelled'
+    const isClickable = !isDone && !isCancelled
     return (
       <div
-        onClick={() => { if (!isDone) { setCompletingTask(task); setOutcomeNote('') } }}
+        onClick={() => { if (isClickable) { setCompletingTask(task); setOutcomeNote('') } }}
         className={`rounded-lg p-2 text-xs transition ${
-          isDone
+          isCancelled
+            ? 'bg-red-900/10 border border-red-800/30 cursor-default opacity-50'
+            : isDone
             ? 'bg-green-900/20 border border-green-700/50 cursor-default'
             : 'bg-gray-700 hover:bg-gray-600 border border-gray-600 cursor-pointer'
         }`}
       >
         <div className="flex items-center gap-1">
-          {isDone ? <span>✅</span> : <span>{priorityEmoji[task.priority]}</span>}
+          {isCancelled ? <span>🗑️</span> : isDone ? <span>✅</span> : <span>{priorityEmoji[task.priority]}</span>}
           {!compact && <span className="text-gray-400">{task.scheduled_time?.slice(0, 5)}</span>}
           {task.category && <span className="text-gray-500 ml-auto">{categoryLabel[task.category] || task.category}</span>}
         </div>
-        <p className={`font-medium mt-0.5 ${isDone ? 'text-green-400' : 'text-white'}`}>
+        <p className={`font-medium mt-0.5 ${isCancelled ? 'text-red-400/60' : isDone ? 'text-green-400' : 'text-white'}`}>
           {compact ? task.client_name : `[${task.client_name}]`}
         </p>
-        <p className={`${isDone ? 'text-green-400/60 line-through' : 'text-gray-300'}`}>
+        <p className={`${isCancelled ? 'text-red-400/40 line-through' : isDone ? 'text-green-400/60 line-through' : 'text-gray-300'}`}>
           {task.task}
         </p>
-        {!compact && <p className="text-gray-500">{task.estimated_minutes}min</p>}
+        {!compact && !isCancelled && <p className="text-gray-500">{task.estimated_minutes}min</p>}
+        {isCancelled && <p className="text-red-500 text-[10px] mt-0.5">已取消</p>}
         {isDone && task.outcome_note && (
           <p className="text-green-400 mt-1 border-t border-green-800/50 pt-1">
             📊 {task.outcome_note}
@@ -411,6 +447,7 @@ export default function Tasks() {
           <option value="all">全部狀態</option>
           <option value="pending">待處理</option>
           <option value="done">已完成</option>
+          <option value="cancelled">已取消</option>
         </select>
       </div>
 
@@ -589,11 +626,11 @@ export default function Tasks() {
         </div>
       )}
 
-      {/* 完成任務 Modal */}
+      {/* 任務操作 Modal */}
       {completingTask && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setCompletingTask(null)}>
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-white mb-2">✅ 標記完成</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">📋 任務操作</h3>
             <p className="text-gray-300 mb-1">
               {priorityEmoji[completingTask.priority]} [{completingTask.client_name}] {completingTask.task}
             </p>
@@ -609,14 +646,28 @@ export default function Tasks() {
                 autoFocus />
               <p className="text-xs text-gray-500 mt-1">有填備註會自動帶入下次報告</p>
             </div>
-            <div className="flex space-x-2">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-400 mb-1">改期（選填）</label>
+              <input type="date" value={completingTask.scheduled_date}
+                onChange={(e) => { handleReschedule(completingTask.id, e.target.value) }}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div className="flex flex-wrap gap-2">
               <button onClick={() => handleComplete(completingTask.id)}
-                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
-                確認完成
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                ✅ 完成
+              </button>
+              <button onClick={() => handlePostpone(completingTask.id)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                📅 延後一天
+              </button>
+              <button onClick={() => handleCancel(completingTask.id)}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+                🗑️ 取消任務
               </button>
               <button onClick={() => setCompletingTask(null)}
-                className="bg-gray-700 text-gray-300 px-6 py-2 rounded-lg hover:bg-gray-600 transition">
-                取消
+                className="bg-gray-700 text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                關閉
               </button>
             </div>
           </div>
