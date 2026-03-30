@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import ReactMarkdown from 'react-markdown'
@@ -10,8 +10,10 @@ export default function ReportDetail() {
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState(false)
   const [sending, setSending] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [showLinePreview, setShowLinePreview] = useState(false)
   const [lineMessage, setLineMessage] = useState('')
+  const contentRef = useRef(null)
   useEffect(() => { fetchReport() }, [id])
   const fetchReport = async () => {
     try {
@@ -60,13 +62,14 @@ export default function ReportDetail() {
           </div>
         </div>
         <div className="flex gap-3">
+          <button onClick={async () => { setDownloading(true); try { const html2pdf = (await import('html2pdf.js')).default; await html2pdf().set({ margin: [15,15,15,15], filename: `${report.clients?.name || '廣告'}_成效報告.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['avoid-all','css','legacy'] } }).from(contentRef.current).save(); } catch(e) { alert('下載失敗') } finally { setDownloading(false) } }} disabled={downloading} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">{downloading ? '下載中...' : '📥 下載 PDF'}</button>
           <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/r/${id}`); alert('已複製報告連結！') }} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">🔗 複製連結</button>
           {report.status !== 'published' && <button onClick={publishReport} disabled={publishing} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">{publishing ? '發布中...' : '✅ 發布報告'}</button>}
           <button onClick={openLinePreview} disabled={!report.clients?.line_group_id} className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50">📱 發送到 LINE</button>
           <Link to={`/reports/${id}/edit`} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">✏️ 編輯</Link>
         </div>
       </div>
-      <div className="bg-white rounded-xl border border-gray-300 p-8 public-report">
+      <div ref={contentRef} className="bg-white rounded-xl border border-gray-300 p-8 public-report">
         <div className="markdown-content"><ReactMarkdown remarkPlugins={[remarkGfm]}>{report.data_analysis || '（無內容）'}</ReactMarkdown></div>
       </div>
       <div className="mt-6 flex justify-between">
