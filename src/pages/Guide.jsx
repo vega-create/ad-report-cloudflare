@@ -11,7 +11,7 @@ export default function Guide() {
             { step: '1', label: 'Claude 分析', sub: '廣告截圖', color: 'blue' },
             { step: '2', label: '解析排程', sub: '貼 MD', color: 'blue' },
             { step: '3', label: 'LINE 提醒', sub: '每天 09:00', color: 'green' },
-            { step: '4', label: '完成任務', sub: 'LINE / 網頁', color: 'green' },
+            { step: '4', label: '執行任務', sub: '完成/取消/改期', color: 'green' },
             { step: '5', label: '帶入報告', sub: '自動引用', color: 'purple' },
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -116,40 +116,52 @@ export default function Guide() {
       <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
         <div className="flex items-center gap-3">
           <span className="bg-green-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">4</span>
-          <h2 className="text-lg font-semibold text-white">完成任務</h2>
+          <h2 className="text-lg font-semibold text-white">執行任務（完成 / 取消 / 改期）</h2>
         </div>
-        <p className="text-gray-300">兩種方式標記完成：</p>
+        <p className="text-gray-300">廣告任務可以完成、取消或改期，LINE 和網頁都可以操作：</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-gray-900 rounded-lg p-4 space-y-2">
-            <p className="text-green-400 font-semibold">方式 A：LINE 回報</p>
-            <p className="text-gray-300 text-sm">在主管群組說「完成」即可：</p>
-            <div className="bg-gray-800 rounded p-2 text-sm space-y-1">
-              <p className="text-white">「寵樂芙 ROAS 調整完成」</p>
-              <p className="text-gray-500 text-xs">或加上成效備註：</p>
-              <p className="text-white">「Bluebulous GMC 串接完成，已修復」</p>
+            <p className="text-green-400 font-semibold">方式 A：LINE 指令</p>
+            <p className="text-gray-300 text-sm">在主管群組直接說：</p>
+            <div className="bg-gray-800 rounded p-2 text-sm space-y-2">
+              <div>
+                <p className="text-gray-500 text-xs">完成：</p>
+                <p className="text-white">「寵樂芙 ROAS 調整<span className="text-green-400">完成</span>」</p>
+                <p className="text-white">「寵樂芙 ROAS <span className="text-green-400">完成</span>，ROAS 從 19 升到 23」</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">取消：</p>
+                <p className="text-white">「<span className="text-red-400">取消</span> 3 piglets 素材 A/B 測試」</p>
+                <p className="text-white">「寵樂芙 素材替換 <span className="text-red-400">不做了</span>」</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">延後到明天：</p>
+                <p className="text-white">「<span className="text-blue-400">延後</span> 寵樂芙 素材替換」</p>
+                <p className="text-white">「3 piglets 測試 <span className="text-blue-400">改期</span>」</p>
+              </div>
             </div>
-            <p className="text-gray-500 text-xs">→ 自動比對今日任務 + 顯示進度</p>
             <div className="border-t border-gray-700 pt-2 mt-2">
-              <p className="text-gray-400 text-xs">LINE 回覆：</p>
               <p className="text-green-400 text-xs">✅ 廣告任務完成：[寵樂芙] 調整 ROAS 出價</p>
-              <p className="text-green-400 text-xs">📊 今日廣告進度 3/12</p>
+              <p className="text-red-400 text-xs">🗑️ 已取消廣告任務：[3 piglets] 素材 A/B 測試</p>
+              <p className="text-blue-400 text-xs">📅 已延後廣告任務到明天：[寵樂芙] 素材替換</p>
             </div>
-            <p className="text-gray-500 text-xs mt-1">💡 加成效備註會自動帶入下次報告</p>
+            <p className="text-gray-500 text-xs mt-1">💡 完成時加成效備註會自動帶入下次報告</p>
           </div>
           <div className="bg-gray-900 rounded-lg p-4 space-y-2">
-            <p className="text-green-400 font-semibold">方式 B：網頁點擊</p>
-            <p className="text-gray-300 text-sm">在「廣告任務」頁面：</p>
-            <div className="space-y-1 text-sm">
-              <p className="text-gray-400">1. 點擊待處理的任務卡片</p>
-              <p className="text-gray-400">2. 輸入成效備註（選填）</p>
-              <p className="text-gray-400">3. 點「確認完成」</p>
+            <p className="text-green-400 font-semibold">方式 B：網頁操作</p>
+            <p className="text-gray-300 text-sm">在「廣告任務」頁面點擊任務卡片：</p>
+            <div className="space-y-1 text-sm text-gray-400">
+              <p><span className="text-green-400">✅ 完成</span> → 標記完成 + 填成效備註</p>
+              <p><span className="text-blue-400">📅 延後一天</span> → 自動移到明天</p>
+              <p><span className="text-red-400">🗑️ 取消任務</span> → 標記為已取消</p>
+              <p><span className="text-yellow-400">日期選擇器</span> → 改到任何日期</p>
             </div>
             <div className="border-t border-gray-700 pt-2 mt-2">
-              <p className="text-gray-400 text-xs">任務卡片會變成：</p>
-              <p className="text-green-400 text-xs">✅ 綠色底 + 刪除線</p>
-              <p className="text-green-400 text-xs">📊 顯示成效備註</p>
-              <p className="text-green-500 text-xs">完成時間戳記</p>
+              <p className="text-gray-400 text-xs">任務狀態顯示：</p>
+              <p className="text-green-400 text-xs">✅ 完成 → 綠色底 + 刪除線 + 成效備註</p>
+              <p className="text-red-400 text-xs">🗑️ 取消 → 紅色半透明 + 刪除線</p>
             </div>
+            <p className="text-gray-500 text-xs mt-1">💡 LINE 和網頁操作是同步的</p>
           </div>
         </div>
       </div>
@@ -308,57 +320,73 @@ export default function Guide() {
         </div>
       </div>
 
-      {/* 廣告任務取消 / 改期 */}
-      <div className="bg-gray-800 rounded-xl border border-red-700/50 p-6 space-y-4">
+      {/* 任務管理（排程任務） */}
+      <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
         <div className="flex items-center gap-3">
-          <span className="bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">🗑️</span>
-          <h2 className="text-lg font-semibold text-white">廣告任務取消 / 改期</h2>
+          <span className="bg-gray-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">📋</span>
+          <h2 className="text-lg font-semibold text-white">任務管理（員工排程任務）</h2>
         </div>
         <p className="text-gray-300">
-          排定的廣告任務可能需要更動或取消，可以用 LINE 或網頁操作。
+          管理員工的固定排程任務（週期性工作），系統會根據頻率自動排入每日待辦。
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-gray-900 rounded-lg p-4 space-y-2">
-            <p className="text-red-400 font-semibold">方式 A：LINE 指令</p>
-            <p className="text-gray-400 text-sm">在主管群組說：</p>
-            <div className="bg-gray-800 rounded p-3 text-sm space-y-2">
-              <div>
-                <p className="text-gray-500 text-xs mb-1">取消任務：</p>
-                <p className="text-white">「3 piglets cleaning 素材 A/B 測試規劃 <span className="text-red-400">取消</span>」</p>
-                <p className="text-white">「<span className="text-red-400">取消</span> 寵樂芙 ROAS 調整」</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs mb-1">延後到明天：</p>
-                <p className="text-white">「<span className="text-blue-400">延後</span> 寵樂芙 素材替換」</p>
-                <p className="text-white">「3 piglets <span className="text-blue-400">改期</span>」</p>
-              </div>
-            </div>
-            <div className="border-t border-gray-700 pt-2 mt-2">
-              <p className="text-gray-400 text-xs">LINE 回覆：</p>
-              <p className="text-red-400 text-xs">🗑️ 已取消廣告任務：[3 piglets cleaning] 素材 A/B 測試規劃</p>
-              <p className="text-blue-400 text-xs">📅 已延後廣告任務到明天：[寵樂芙] 素材替換</p>
+            <p className="text-cyan-400 font-semibold">新增 / 編輯任務</p>
+            <div className="space-y-1 text-sm text-gray-400">
+              <p>1. 側邊欄點「任務管理」</p>
+              <p>2. 點 <span className="bg-green-600 text-white px-2 py-0.5 rounded text-xs">新增任務</span></p>
+              <p>3. 選擇<span className="text-white">員工、客戶、任務名稱</span></p>
+              <p>4. 設定<span className="text-white">頻率</span>：每天、週一~週五、不固定</p>
             </div>
           </div>
           <div className="bg-gray-900 rounded-lg p-4 space-y-2">
-            <p className="text-red-400 font-semibold">方式 B：網頁操作</p>
-            <p className="text-gray-300 text-sm">在「廣告任務」頁面點擊待處理的任務：</p>
+            <p className="text-cyan-400 font-semibold">頻率範例</p>
             <div className="space-y-1 text-sm text-gray-400">
-              <p><span className="text-green-400">✅ 完成</span> → 標記完成 + 填成效備註</p>
-              <p><span className="text-blue-400">📅 延後一天</span> → 自動移到明天</p>
-              <p><span className="text-red-400">🗑️ 取消任務</span> → 標記為已取消</p>
-              <p><span className="text-yellow-400">改期</span> → 用日期選擇器改到任何日期</p>
-            </div>
-            <div className="border-t border-gray-700 pt-2 mt-2">
-              <p className="text-gray-400 text-xs">取消的任務：</p>
-              <p className="text-gray-400 text-xs">🗑️ 紅色半透明 + 刪除線顯示</p>
-              <p className="text-gray-400 text-xs">不能再操作，不計入進度</p>
+              <p><span className="text-white">每天</span> → 每天出現在待辦</p>
+              <p><span className="text-white">週一、週三、週五</span> → 指定星期</p>
+              <p><span className="text-white">12號</span> → 每月固定日期</p>
+              <p><span className="text-white">不固定</span> → 不自動排入待辦</p>
             </div>
           </div>
         </div>
         <div className="bg-gray-900 rounded-lg p-4 text-sm text-gray-400 space-y-1">
-          <p>💡 LINE 取消和網頁操作是同步的，改了其中一邊另一邊自動更新</p>
-          <p>💡 關鍵字：<span className="text-white">取消、不做了</span> → 取消任務；<span className="text-white">延後、改期</span> → 移到明天</p>
-          <p>💡 篩選器可以選「已取消」查看所有取消過的任務</p>
+          <p>💡 刪除任務會一併清除相關記錄</p>
+          <p>💡 排程任務和廣告任務是分開的：排程任務 = 員工固定工作，廣告任務 = 具體廣告操作</p>
+        </div>
+      </div>
+
+      {/* 客戶訊息篩選 */}
+      <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="bg-yellow-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">💬</span>
+          <h2 className="text-lg font-semibold text-white">客戶訊息通知</h2>
+        </div>
+        <p className="text-gray-300">
+          系統會自動篩選客戶群組的訊息，只有<span className="text-white font-medium">公事相關</span>才會通知主管群。
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-green-400 font-semibold">會通知的訊息</p>
+            <p className="text-gray-400 text-sm">包含以下關鍵字的訊息：</p>
+            <div className="text-sm text-gray-400 space-y-1">
+              <p>報價、廣告、素材、修改、預算、費用</p>
+              <p>合約、排程、活動、進度、問題、確認</p>
+              <p>設計、文案、貼文、影片、上架、下架</p>
+              <p>請款、收據、發票、ROAS、CPC、CTR...</p>
+            </div>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-red-400 font-semibold">不會通知的訊息</p>
+            <div className="text-sm text-gray-400 space-y-1">
+              <p>早安、午安、晚安</p>
+              <p>貼圖、閒聊、日常問候</p>
+              <p>與業務無關的對話</p>
+            </div>
+            <div className="border-t border-gray-700 pt-2 mt-2 text-xs text-gray-500">
+              <p>💡 同一輪對話只通知一次</p>
+              <p>💡 老闆或員工回覆後，下一輪公事訊息才會再通知</p>
+            </div>
+          </div>
         </div>
       </div>
 
