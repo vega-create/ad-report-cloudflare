@@ -59,6 +59,8 @@ export default function Tasks() {
   const [opClients, setOpClients] = useState([])
   const [showOpAdd, setShowOpAdd] = useState(false)
   const [newOp, setNewOp] = useState({ client_name: '', platform: '', description: '', date: formatDate(new Date()) })
+  const [editingOp, setEditingOp] = useState(null)
+  const [editForm, setEditForm] = useState({ client_name: '', platform: '', description: '', date: '' })
   const exportRef = useRef(null)
 
   // 操作記錄日曆計算
@@ -378,9 +380,25 @@ export default function Tasks() {
     fetchOpLogs(); fetchOpClients()
   }
 
+  function handleOpClick(log) {
+    setEditingOp(log)
+    setEditForm({ client_name: log.client_name, platform: log.platform || '', description: log.description, date: log.operation_date })
+  }
+
+  async function handleOpUpdate() {
+    if (!editingOp || !editForm.description) return
+    await supabase.from('ad_operation_logs').update({
+      client_name: editForm.client_name, platform: editForm.platform || null,
+      description: editForm.description, operation_date: editForm.date,
+    }).eq('id', editingOp.id)
+    setEditingOp(null)
+    fetchOpLogs()
+  }
+
   async function handleOpDelete(id) {
     if (!confirm('確定要刪除？')) return
     await supabase.from('ad_operation_logs').delete().eq('id', id)
+    setEditingOp(null)
     fetchOpLogs()
   }
 
@@ -490,7 +508,7 @@ export default function Tasks() {
                       {dayLogs.length === 0 ? (
                         <p className="text-xs text-gray-600 text-center py-4">無記錄</p>
                       ) : dayLogs.map(log => (
-                        <div key={log.id} className="bg-gray-700 hover:bg-gray-600 rounded-lg p-2 cursor-pointer text-xs group" onClick={() => handleOpDelete(log.id)}>
+                        <div key={log.id} className="bg-gray-700 hover:bg-gray-600 rounded-lg p-2 cursor-pointer text-xs group" onClick={() => handleOpClick(log)}>
                           {log.platform && <span className={`${opPlatformColors[log.platform] || 'bg-gray-500'} text-white px-1.5 py-0.5 rounded text-[10px] mr-1`}>{opPlatformLabels[log.platform]}</span>}
                           <span className="text-blue-400 font-medium">{log.client_name}</span>
                           <p className="text-gray-300 mt-0.5 leading-tight">{log.description}</p>
@@ -523,7 +541,7 @@ export default function Tasks() {
                       </div>
                       <div className="space-y-0.5">
                         {dayLogs.slice(0, 3).map(log => (
-                          <div key={log.id} className="bg-gray-700/80 rounded px-1 py-0.5 text-[10px] text-gray-300 truncate cursor-pointer hover:bg-gray-600" onClick={() => handleOpDelete(log.id)}>
+                          <div key={log.id} className="bg-gray-700/80 rounded px-1 py-0.5 text-[10px] text-gray-300 truncate cursor-pointer hover:bg-gray-600" onClick={() => handleOpClick(log)}>
                             <span className="text-blue-400">{log.client_name}</span> {log.description}
                           </div>
                         ))}
@@ -532,6 +550,57 @@ export default function Tasks() {
                     </div>
                   )
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* 編輯 Modal */}
+          {editingOp && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setEditingOp(null)}>
+              <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700" onClick={e => e.stopPropagation()}>
+                <h2 className="text-lg font-bold text-white mb-4">編輯操作記錄</h2>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm text-gray-400 block mb-1">客戶</label>
+                      <select value={editForm.client_name} onChange={e => setEditForm({ ...editForm, client_name: e.target.value })}
+                        className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600">
+                        <option value="">選擇客戶</option>
+                        {opClients.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400 block mb-1">日期</label>
+                      <input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })}
+                        className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-1">平台</label>
+                    <select value={editForm.platform} onChange={e => setEditForm({ ...editForm, platform: e.target.value })}
+                      className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600">
+                      <option value="">不指定</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="google">Google</option>
+                      <option value="line">LINE</option>
+                      <option value="website">Website</option>
+                      <option value="other">其他</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-1">操作內容</label>
+                    <textarea value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                      className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 h-24 resize-none" />
+                  </div>
+                </div>
+                <div className="flex justify-between mt-6">
+                  <button onClick={() => handleOpDelete(editingOp.id)} className="px-4 py-2 text-red-400 hover:text-red-300">🗑️ 刪除</button>
+                  <div className="flex gap-3">
+                    <button onClick={() => setEditingOp(null)} className="px-4 py-2 text-gray-400 hover:text-white">取消</button>
+                    <button onClick={handleOpUpdate} disabled={!editForm.description}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50">儲存</button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
