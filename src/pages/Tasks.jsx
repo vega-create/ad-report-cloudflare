@@ -496,9 +496,12 @@ export default function Tasks() {
                   <div key={date}>
                     <h3 className="text-gray-400 text-sm font-medium mb-3">{d.getMonth() + 1}/{d.getDate()} ({weekday}) — {items.length} 筆</h3>
                     <div className="space-y-2">
-                      {items.map(log => (
+                      {items.map(log => {
+                        const time = log.created_at ? new Date(log.created_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Taipei' }) : ''
+                        return (
                         <div key={log.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700 flex items-start justify-between group">
                           <div className="flex items-start gap-3">
+                            {time && <span className="text-gray-500 text-xs mt-1 shrink-0">{time}</span>}
                             {log.platform && (
                               <span className={`${opPlatformColors[log.platform] || 'bg-gray-500'} text-white text-xs px-2 py-1 rounded font-medium mt-0.5`}>
                                 {opPlatformLabels[log.platform] || log.platform}
@@ -511,7 +514,8 @@ export default function Tasks() {
                           </div>
                           <button onClick={() => handleOpDelete(log.id)} className="text-red-400 hover:text-red-300 text-sm opacity-0 group-hover:opacity-100 transition-opacity ml-4 shrink-0">刪除</button>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )
