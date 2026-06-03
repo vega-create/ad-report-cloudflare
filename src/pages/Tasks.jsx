@@ -333,8 +333,13 @@ export default function Tasks() {
   async function fetchOpClients() {
     const { data: d1 } = await supabase.from('ad_operation_logs').select('client_name')
     const { data: d2 } = await supabase.from('ad_tasks').select('client_name')
-    const all = [...(d1 || []), ...(d2 || [])].map(c => c.client_name)
-    setOpClients([...new Set(all)].sort())
+    const { data: d3 } = await supabaseAd.from('clients').select('name')
+    const all = [
+      ...(d1 || []).map(c => c.client_name),
+      ...(d2 || []).map(c => c.client_name),
+      ...(d3 || []).map(c => c.name),
+    ]
+    setOpClients([...new Set(all)].filter(Boolean).sort())
   }
 
   async function fetchOpLogs() {
