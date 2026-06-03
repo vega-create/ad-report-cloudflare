@@ -13,6 +13,7 @@ import AgentMessages from './pages/AgentMessages'
 import AgentTasks from './pages/AgentTasks'
 import Tasks from './pages/Tasks'
 import QuickLogs from './pages/QuickLogs'
+import OperationLogs from './pages/OperationLogs'
 import Guide from './pages/Guide'
 import Architecture from './pages/Architecture'
 import Proposals from './pages/Proposals'
@@ -40,6 +41,7 @@ function App() {
           <Route path="proposals/:id/edit" element={<ProposalEdit />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="quick-logs" element={<QuickLogs />} />
+          <Route path="operation-logs" element={<OperationLogs />} />
           <Route path="agent" element={<AgentDashboard />} />
           <Route path="agent/messages" element={<AgentMessages />} />
           <Route path="agent/tasks" element={<AgentTasks />} />

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { supabaseAgent } from '../lib/supabase-agent'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -12,15 +13,17 @@ export default function NewReport() {
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [completedTasks, setCompletedTasks] = useState([])
+  const [operationLogs, setOperationLogs] = useState([])
 
   useEffect(() => { fetchClients() }, [])
 
-  // 選擇客戶時，自動載入該客戶已完成且有成效的任務
+  // 選擇客戶時，自動載入該客戶已完成且有成效的任務 + 操作記錄
   useEffect(() => {
-    if (!selectedClient) { setCompletedTasks([]); return }
+    if (!selectedClient) { setCompletedTasks([]); setOperationLogs([]); return }
+    const client = clients.find(c => c.id === selectedClient)
+    if (!client) return
+
     const fetchCompletedTasks = async () => {
-      const client = clients.find(c => c.id === selectedClient)
-      if (!client) return
       const { data } = await supabase
         .from('ad_tasks')
         .select('*')
@@ -30,7 +33,19 @@ export default function NewReport() {
         .order('completed_at')
       setCompletedTasks(data || [])
     }
+
+    const fetchOperationLogs = async () => {
+      const { data } = await supabaseAgent
+        .from('ad_operation_logs')
+        .select('*')
+        .eq('client_name', client.name)
+        .eq('include_in_report', true)
+        .order('operation_date')
+      setOperationLogs(data || [])
+    }
+
     fetchCompletedTasks()
+    fetchOperationLogs()
   }, [selectedClient, clients])
 
   const fetchClients = async () => {
@@ -69,11 +84,38 @@ export default function NewReport() {
     setContent(prev => prev + section)
   }
 
+  const insertOperationLogs = () => {
+    if (operationLogs.length === 0) return
+    let section = '\n\n## 本期操作記錄\n\n'
+    const grouped = {}
+    operationLogs.forEach(log => {
+      const d = log.operation_date
+      if (!grouped[d]) grouped[d] = []
+      grouped[d].push(log)
+    })
+    Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).forEach(([date, items]) => {
+      const d = new Date(date)
+      section += `### ${d.getMonth() + 1}/${d.getDate()}\n`
+      items.forEach(log => {
+        const p = log.platform ? `[${log.platform.toUpperCase()}] ` : ''
+        section += `- ${p}${log.description}\n`
+      })
+      section += '\n'
+    })
+    setContent(prev => prev + section)
+  }
+
   const markTasksConsumed = async () => {
-    const ids = completedTasks.map(t => t.id)
-    if (ids.length === 0) return
-    await supabase.from('ad_tasks').update({ include_in_next_report: false }).in('id', ids)
+    const taskIds = completedTasks.map(t => t.id)
+    if (taskIds.length > 0) {
+      await supabase.from('ad_tasks').update({ include_in_next_report: false }).in('id', taskIds)
+    }
+    const logIds = operationLogs.map(l => l.id)
+    if (logIds.length > 0) {
+      await supabaseAgent.from('ad_operation_logs').update({ include_in_report: false }).in('id', logIds)
+    }
     setCompletedTasks([])
+    setOperationLogs([])
   }
 
   return (
@@ -116,6 +158,26 @@ export default function NewReport() {
             ))}
           </div>
           <p className="text-gray-500 text-xs mt-2">點「插入到報告」會加到 MD 尾端，儲存報告後這些任務會標記為已引用</p>
+        </div>
+      )}
+
+      {/* 操作記錄 */}
+      {operationLogs.length > 0 && (
+        <div className="mb-6 bg-blue-900/20 border border-blue-700/50 rounded-xl p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-blue-400 font-semibold">📝 操作記錄（{operationLogs.length} 筆）</h3>
+            <button onClick={insertOperationLogs} className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+              插入到報告
+            </button>
+          </div>
+          <div className="space-y-1 text-sm">
+            {operationLogs.map(log => (
+              <div key={log.id} className="text-gray-300">
+                📅 {log.operation_date} {log.platform && <span className="text-blue-400">[{log.platform.toUpperCase()}]</span>} {log.description}
+              </div>
+            ))}
+          </div>
+          <p className="text-gray-500 text-xs mt-2">點「插入到報告」會加到 MD 尾端，儲存報告後這些記錄會標記為已引用</p>
         </div>
       )}
 
