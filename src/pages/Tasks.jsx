@@ -58,9 +58,9 @@ export default function Tasks() {
   const [opMonthDate, setOpMonthDate] = useState(new Date())
   const [opClients, setOpClients] = useState([])
   const [showOpAdd, setShowOpAdd] = useState(false)
-  const [newOp, setNewOp] = useState({ client_name: '', platform: '', description: '', date: formatDate(new Date()) })
+  const [newOp, setNewOp] = useState({ client_name: '', platforms: [], description: '', date: formatDate(new Date()) })
   const [editingOp, setEditingOp] = useState(null)
-  const [editForm, setEditForm] = useState({ client_name: '', platform: '', description: '', date: '' })
+  const [editForm, setEditForm] = useState({ client_name: '', platforms: [], description: '', date: '' })
   const exportRef = useRef(null)
 
   // 操作記錄日曆計算
@@ -339,7 +339,29 @@ export default function Tasks() {
 
   // === 操作記錄相關函式 ===
   const opPlatformColors = { facebook: 'bg-blue-600', google: 'bg-red-500', line: 'bg-green-500', website: 'bg-purple-500', other: 'bg-gray-500' }
-  const opPlatformLabels = { facebook: 'FB', google: 'Google', line: 'LINE', website: 'Web', other: '其他' }
+  const opPlatformLabels = { facebook: 'Meta', google: 'Google', line: 'LINE', website: 'Web', other: '其他' }
+  const platformOptions = ['facebook', 'google', 'line', 'website', 'other']
+
+  function PlatformPicker({ selected, onChange }) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {platformOptions.map(p => (
+          <button key={p} type="button" onClick={() => {
+            if (selected.includes(p)) onChange(selected.filter(x => x !== p))
+            else onChange([...selected, p])
+          }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${selected.includes(p) ? opPlatformColors[p] + ' text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}>
+            {opPlatformLabels[p]}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  // 解析 platform 欄位（可能是 "facebook,google" 或 "facebook"）
+  function parsePlatforms(p) {
+    if (!p) return []
+    return p.split(',').map(x => x.trim()).filter(Boolean)
+  }
 
   useEffect(() => {
     if (activeTab === 'logs') { fetchOpClients(); fetchOpLogs() }
@@ -372,23 +394,29 @@ export default function Tasks() {
     if (!newOp.client_name || !newOp.description) return
     await supabase.from('ad_operation_logs').insert({
       client_name: newOp.client_name, operation_date: newOp.date,
-      platform: newOp.platform || null, description: newOp.description,
-      raw_message: `(from web) ${newOp.description}`,
+      platform: newOp.platforms.length > 0 ? newOp.platforms.join(',') : null,
+      description: newOp.description, raw_message: `(from web) ${newOp.description}`,
     })
-    setNewOp({ client_name: '', platform: '', description: '', date: formatDate(new Date()) })
+    setNewOp({ client_name: '', platforms: [], description: '', date: formatDate(new Date()) })
     setShowOpAdd(false)
     fetchOpLogs(); fetchOpClients()
   }
 
   function handleOpClick(log) {
     setEditingOp(log)
-    setEditForm({ client_name: log.client_name, platform: log.platform || '', description: log.description, date: log.operation_date })
+    const platforms = log.platform ? log.platform.split(',').map(p => p.trim()) : []
+    setEditForm({ client_name: log.client_name, platforms, description: log.description, date: log.operation_date })
+  }
+
+  function togglePlatform(list, setList, value) {
+    if (list.includes(value)) setList(prev => ({ ...prev, platforms: prev.platforms.filter(p => p !== value) }))
+    else setList(prev => ({ ...prev, platforms: [...prev.platforms, value] }))
   }
 
   async function handleOpUpdate() {
     if (!editingOp || !editForm.description) return
     await supabase.from('ad_operation_logs').update({
-      client_name: editForm.client_name, platform: editForm.platform || null,
+      client_name: editForm.client_name, platform: editForm.platforms.length > 0 ? editForm.platforms.join(',') : null,
       description: editForm.description, operation_date: editForm.date,
     }).eq('id', editingOp.id)
     setEditingOp(null)
@@ -509,8 +537,10 @@ export default function Tasks() {
                         <p className="text-xs text-gray-600 text-center py-4">無記錄</p>
                       ) : dayLogs.map(log => (
                         <div key={log.id} className="bg-gray-700 hover:bg-gray-600 rounded-lg p-2 cursor-pointer text-xs group" onClick={() => handleOpClick(log)}>
-                          {log.platform && <span className={`${opPlatformColors[log.platform] || 'bg-gray-500'} text-white px-1.5 py-0.5 rounded text-[10px] mr-1`}>{opPlatformLabels[log.platform]}</span>}
-                          <span className="text-blue-400 font-medium">{log.client_name}</span>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {parsePlatforms(log.platform).map(p => <span key={p} className={`${opPlatformColors[p] || 'bg-gray-500'} text-white px-1.5 py-0.5 rounded text-[10px]`}>{opPlatformLabels[p] || p}</span>)}
+                            <span className="text-blue-400 font-medium">{log.client_name}</span>
+                          </div>
                           <p className="text-gray-300 mt-0.5 leading-tight">{log.description}</p>
                         </div>
                       ))}
@@ -542,6 +572,7 @@ export default function Tasks() {
                       <div className="space-y-0.5">
                         {dayLogs.slice(0, 3).map(log => (
                           <div key={log.id} className="bg-gray-700/80 rounded px-1 py-0.5 text-[10px] text-gray-300 truncate cursor-pointer hover:bg-gray-600" onClick={() => handleOpClick(log)}>
+                            {parsePlatforms(log.platform).map(p => <span key={p} className={`${opPlatformColors[p]} text-white px-1 rounded text-[8px] mr-0.5`}>{opPlatformLabels[p]}</span>)}
                             <span className="text-blue-400">{log.client_name}</span> {log.description}
                           </div>
                         ))}
@@ -577,15 +608,7 @@ export default function Tasks() {
                   </div>
                   <div>
                     <label className="text-sm text-gray-400 block mb-1">平台</label>
-                    <select value={editForm.platform} onChange={e => setEditForm({ ...editForm, platform: e.target.value })}
-                      className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600">
-                      <option value="">不指定</option>
-                      <option value="facebook">Facebook</option>
-                      <option value="google">Google</option>
-                      <option value="line">LINE</option>
-                      <option value="website">Website</option>
-                      <option value="other">其他</option>
-                    </select>
+                    <PlatformPicker selected={editForm.platforms} onChange={p => setEditForm({ ...editForm, platforms: p })} />
                   </div>
                   <div>
                     <label className="text-sm text-gray-400 block mb-1">操作內容</label>
@@ -628,15 +651,7 @@ export default function Tasks() {
                   </div>
                   <div>
                     <label className="text-sm text-gray-400 block mb-1">平台</label>
-                    <select value={newOp.platform} onChange={e => setNewOp({ ...newOp, platform: e.target.value })}
-                      className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600">
-                      <option value="">不指定</option>
-                      <option value="facebook">Facebook</option>
-                      <option value="google">Google</option>
-                      <option value="line">LINE</option>
-                      <option value="website">Website</option>
-                      <option value="other">其他</option>
-                    </select>
+                    <PlatformPicker selected={newOp.platforms} onChange={p => setNewOp({ ...newOp, platforms: p })} />
                   </div>
                   <div>
                     <label className="text-sm text-gray-400 block mb-1">操作內容</label>
