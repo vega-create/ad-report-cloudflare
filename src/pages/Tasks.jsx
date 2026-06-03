@@ -53,14 +53,27 @@ export default function Tasks() {
   const [opLogs, setOpLogs] = useState([])
   const [opLoading, setOpLoading] = useState(false)
   const [opFilterClient, setOpFilterClient] = useState('')
-  const [opFilterMonth, setOpFilterMonth] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  })
+  const [opViewMode, setOpViewMode] = useState('week')
+  const [opWeekOffset, setOpWeekOffset] = useState(0)
+  const [opMonthDate, setOpMonthDate] = useState(new Date())
   const [opClients, setOpClients] = useState([])
   const [showOpAdd, setShowOpAdd] = useState(false)
   const [newOp, setNewOp] = useState({ client_name: '', platform: '', description: '', date: formatDate(new Date()) })
   const exportRef = useRef(null)
+
+  // 操作記錄日曆計算
+  const opMonday = getMonday(new Date())
+  opMonday.setDate(opMonday.getDate() + opWeekOffset * 7)
+  const opWeekDays = Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(opMonday); d.setDate(d.getDate() + i); return d
+  })
+  const opMonthDays = getMonthDays(opMonthDate.getFullYear(), opMonthDate.getMonth())
+  const opCurrentMonth = opMonthDate.getMonth()
+  const opQueryStart = opViewMode === 'week' ? formatDate(opWeekDays[0]) : formatDate(opMonthDays[0])
+  const opQueryEnd = opViewMode === 'week' ? formatDate(opWeekDays[4]) : formatDate(opMonthDays[opMonthDays.length - 1])
+  const opDateLabel = opViewMode === 'week'
+    ? `${opWeekDays[0].getMonth() + 1}/${opWeekDays[0].getDate()} – ${opWeekDays[4].getMonth() + 1}/${opWeekDays[4].getDate()}`
+    : `${opMonthDate.getFullYear()} 年 ${opMonthDate.getMonth() + 1} 月`
 
   // MD 解析
   const [showParser, setShowParser] = useState(false)
@@ -328,7 +341,7 @@ export default function Tasks() {
 
   useEffect(() => {
     if (activeTab === 'logs') { fetchOpClients(); fetchOpLogs() }
-  }, [activeTab, opFilterClient, opFilterMonth])
+  }, [activeTab, opFilterClient, opWeekOffset, opViewMode, opMonthDate])
 
   async function fetchOpClients() {
     const { data: d1 } = await supabase.from('ad_operation_logs').select('client_name')
@@ -344,17 +357,10 @@ export default function Tasks() {
 
   async function fetchOpLogs() {
     setOpLoading(true)
-    const [year, month] = opFilterMonth.split('-').map(Number)
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
-    const nextMonth = month + 1 > 12 ? 1 : month + 1
-    const nextYear = month + 1 > 12 ? year + 1 : year
-    const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
-
     let query = supabase.from('ad_operation_logs').select('*')
-      .gte('operation_date', startDate).lt('operation_date', endDate)
-      .order('operation_date', { ascending: false })
+      .gte('operation_date', opQueryStart).lte('operation_date', opQueryEnd)
+      .order('operation_date').order('created_at')
     if (opFilterClient) query = query.eq('client_name', opFilterClient)
-
     const { data } = await query
     setOpLogs(data || [])
     setOpLoading(false)
@@ -379,31 +385,29 @@ export default function Tasks() {
   }
 
   async function handleOpExportMD() {
-    const [, month] = opFilterMonth.split('-').map(Number)
     const clientLabel = opFilterClient || '全部客戶'
     const grouped = {}
     opLogs.forEach(l => { if (!grouped[l.operation_date]) grouped[l.operation_date] = []; grouped[l.operation_date].push(l) })
-    let md = `# ${clientLabel} ${month}月操作記錄\n\n`
+    let md = `# ${clientLabel} 操作記錄（${opDateLabel}）\n\n`
     Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).forEach(([date, items]) => {
       const d = new Date(date)
       md += `## ${d.getMonth() + 1}/${d.getDate()}\n`
-      items.forEach(l => { md += `- ${l.platform ? `[${l.platform.toUpperCase()}] ` : ''}${l.description}\n` })
+      items.forEach(l => { md += `- ${l.platform ? `[${l.platform.toUpperCase()}] ` : ''}${l.client_name}：${l.description}\n` })
       md += '\n'
     })
     md += `---\n共 ${opLogs.length} 筆操作\n`
     const blob = new Blob([md], { type: 'text/markdown' })
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
-    a.download = `${clientLabel}_${month}月操作記錄.md`; a.click()
+    a.download = `${clientLabel}_${opDateLabel}_操作記錄.md`; a.click()
   }
 
   async function handleOpExportPDF() {
     const html2pdf = (await import('html2pdf.js')).default
-    const [, month] = opFilterMonth.split('-').map(Number)
     const clientLabel = opFilterClient || '全部客戶'
     await html2pdf().set({
-      margin: [15, 15, 15, 15], filename: `${clientLabel}_${month}月操作記錄.pdf`,
+      margin: [15, 15, 15, 15], filename: `${clientLabel}_${opDateLabel}_操作記錄.pdf`,
       image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
     }).from(exportRef.current).save()
   }
 
@@ -446,80 +450,89 @@ export default function Tasks() {
       {/* ===== 操作記錄 Tab ===== */}
       {activeTab === 'logs' && (
         <div className="space-y-6">
-          {/* 篩選 + 按鈕 */}
-          <div className="flex justify-between items-center">
-            <div className="flex gap-3">
-              <select value={opFilterClient} onChange={e => setOpFilterClient(e.target.value)} className="bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 text-sm">
-                <option value="">全部客戶</option>
-                {opClients.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <input type="month" value={opFilterMonth} onChange={e => setOpFilterMonth(e.target.value)} className="bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 text-sm" />
+          {/* 導覽列 */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex bg-gray-700 rounded-lg overflow-hidden">
+              <button onClick={() => setOpViewMode('week')} className={`px-3 py-1.5 text-sm transition ${opViewMode === 'week' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>週</button>
+              <button onClick={() => setOpViewMode('month')} className={`px-3 py-1.5 text-sm transition ${opViewMode === 'month' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>月</button>
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => setShowOpAdd(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">+ 新增</button>
-              <button onClick={handleOpExportMD} disabled={opLogs.length === 0} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-sm disabled:opacity-50">MD</button>
-              <button onClick={handleOpExportPDF} disabled={opLogs.length === 0} className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm disabled:opacity-50">PDF</button>
-            </div>
+
+            <button onClick={() => { if (opViewMode === 'week') setOpWeekOffset(p => p - 1); else setOpMonthDate(d => { const n = new Date(d); n.setMonth(n.getMonth() - 1); return n }) }} className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">◀</button>
+            <span className="text-white font-medium min-w-[160px] text-center">{opDateLabel}</span>
+            <button onClick={() => { if (opViewMode === 'week') setOpWeekOffset(p => p + 1); else setOpMonthDate(d => { const n = new Date(d); n.setMonth(n.getMonth() + 1); return n }) }} className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">▶</button>
+            <button onClick={() => { setOpWeekOffset(0); setOpMonthDate(new Date()) }} className="bg-gray-700 text-gray-300 px-3 py-1 rounded-lg hover:bg-gray-600 text-sm">今天</button>
+
+            <select value={opFilterClient} onChange={e => setOpFilterClient(e.target.value)} className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white ml-auto">
+              <option value="">全部客戶</option>
+              {opClients.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <button onClick={() => setShowOpAdd(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm">+ 新增</button>
+            <button onClick={handleOpExportMD} disabled={opLogs.length === 0} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-50">MD</button>
+            <button onClick={handleOpExportPDF} disabled={opLogs.length === 0} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-50">PDF</button>
           </div>
 
-          {/* 統計 */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 text-center">
-              <p className="text-2xl font-bold text-white">{opLogs.length}</p>
-              <p className="text-xs text-gray-400">本月操作</p>
-            </div>
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 text-center">
-              <p className="text-2xl font-bold text-white">{Object.keys(opClientCount).length}</p>
-              <p className="text-xs text-gray-400">涵蓋客戶</p>
-            </div>
-            {Object.entries(opPlatformCount).slice(0, 2).map(([p, count]) => (
-              <div key={p} className="bg-gray-800 rounded-xl border border-gray-700 p-4 text-center">
-                <p className="text-2xl font-bold text-white">{count}</p>
-                <p className="text-xs text-gray-400">{opPlatformLabels[p] || p}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* 記錄列表 */}
-          {opLoading ? <p className="text-gray-400">載入中...</p> : opLogs.length === 0 ? (
-            <div className="text-center py-20 text-gray-500">
-              <p className="text-4xl mb-4">📝</p>
-              <p>還沒有操作記錄</p>
-              <p className="text-sm mt-2">在 LINE 跟 AI 說你做了什麼，或點右上角新增</p>
-            </div>
-          ) : (
-            <div ref={exportRef} className="space-y-6">
-              {Object.entries(opGrouped).sort(([a], [b]) => b.localeCompare(a)).map(([date, items]) => {
-                const d = new Date(date)
-                const weekday = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
+          {/* 週曆 */}
+          {opLoading ? <div className="text-center py-10 text-gray-400">載入中...</div> :
+          opViewMode === 'week' ? (
+            <div ref={exportRef} className="grid grid-cols-5 gap-3">
+              {opWeekDays.map((day, di) => {
+                const dayStr = formatDate(day)
+                const dayLogs = opLogs.filter(l => l.operation_date === dayStr)
+                const isToday = dayStr === formatDate(new Date())
                 return (
-                  <div key={date}>
-                    <h3 className="text-gray-400 text-sm font-medium mb-3">{d.getMonth() + 1}/{d.getDate()} ({weekday}) — {items.length} 筆</h3>
-                    <div className="space-y-2">
-                      {items.map(log => {
-                        const time = log.created_at ? new Date(log.created_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Taipei' }) : ''
-                        return (
-                        <div key={log.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700 flex items-start justify-between group">
-                          <div className="flex items-start gap-3">
-                            {time && <span className="text-gray-500 text-xs mt-1 shrink-0">{time}</span>}
-                            {log.platform && (
-                              <span className={`${opPlatformColors[log.platform] || 'bg-gray-500'} text-white text-xs px-2 py-1 rounded font-medium mt-0.5`}>
-                                {opPlatformLabels[log.platform] || log.platform}
-                              </span>
-                            )}
-                            <div>
-                              <span className="text-blue-400 font-medium mr-2">{log.client_name}</span>
-                              <span className="text-white">{log.description}</span>
-                            </div>
-                          </div>
-                          <button onClick={() => handleOpDelete(log.id)} className="text-red-400 hover:text-red-300 text-sm opacity-0 group-hover:opacity-100 transition-opacity ml-4 shrink-0">刪除</button>
+                  <div key={di} className={`bg-gray-800 rounded-xl border ${isToday ? 'border-blue-500' : 'border-gray-700'} overflow-hidden`}>
+                    <div className={`px-3 py-2 text-center border-b ${isToday ? 'border-blue-500 bg-blue-600/10' : 'border-gray-700'}`}>
+                      <p className={`text-sm font-semibold ${isToday ? 'text-blue-400' : 'text-gray-300'}`}>{dayNames[di]}</p>
+                      <p className="text-xs text-gray-500">{day.getMonth() + 1}/{day.getDate()}</p>
+                      {dayLogs.length > 0 && <p className="text-xs text-blue-400 mt-0.5">{dayLogs.length} 筆</p>}
+                    </div>
+                    <div className="p-2 space-y-1.5 min-h-[120px]">
+                      {dayLogs.length === 0 ? (
+                        <p className="text-xs text-gray-600 text-center py-4">無記錄</p>
+                      ) : dayLogs.map(log => (
+                        <div key={log.id} className="bg-gray-700 hover:bg-gray-600 rounded-lg p-2 cursor-pointer text-xs group" onClick={() => handleOpDelete(log.id)}>
+                          {log.platform && <span className={`${opPlatformColors[log.platform] || 'bg-gray-500'} text-white px-1.5 py-0.5 rounded text-[10px] mr-1`}>{opPlatformLabels[log.platform]}</span>}
+                          <span className="text-blue-400 font-medium">{log.client_name}</span>
+                          <p className="text-gray-300 mt-0.5 leading-tight">{log.description}</p>
                         </div>
-                        )
-                      })}
+                      ))}
                     </div>
                   </div>
                 )
               })}
+            </div>
+          ) : (
+            /* 月曆 */
+            <div ref={exportRef} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+              <div className="grid grid-cols-7 border-b border-gray-700">
+                {['一', '二', '三', '四', '五', '六', '日'].map(name => (
+                  <div key={name} className="px-2 py-2 text-center text-xs font-semibold text-gray-400">{name}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7">
+                {opMonthDays.map((day, i) => {
+                  const dayStr = formatDate(day)
+                  const dayLogs = opLogs.filter(l => l.operation_date === dayStr)
+                  const isToday = dayStr === formatDate(new Date())
+                  const isCurrentMonth = day.getMonth() === opCurrentMonth
+                  return (
+                    <div key={i} className={`min-h-[90px] border-b border-r border-gray-700 p-1.5 ${!isCurrentMonth ? 'bg-gray-800/50' : ''} ${isToday ? 'bg-blue-900/10' : ''}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-xs ${isToday ? 'text-blue-400 font-bold' : isCurrentMonth ? 'text-gray-400' : 'text-gray-600'}`}>{day.getDate()}</span>
+                        {dayLogs.length > 0 && <span className="text-[10px] text-blue-400">{dayLogs.length}筆</span>}
+                      </div>
+                      <div className="space-y-0.5">
+                        {dayLogs.slice(0, 3).map(log => (
+                          <div key={log.id} className="bg-gray-700/80 rounded px-1 py-0.5 text-[10px] text-gray-300 truncate cursor-pointer hover:bg-gray-600" onClick={() => handleOpDelete(log.id)}>
+                            <span className="text-blue-400">{log.client_name}</span> {log.description}
+                          </div>
+                        ))}
+                        {dayLogs.length > 3 && <p className="text-[10px] text-gray-500 text-center">+{dayLogs.length - 3} 更多</p>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
 
