@@ -59,7 +59,7 @@ export default function Tasks() {
   })
   const [opClients, setOpClients] = useState([])
   const [showOpAdd, setShowOpAdd] = useState(false)
-  const [newOp, setNewOp] = useState({ client_name: '', platform: '', description: '' })
+  const [newOp, setNewOp] = useState({ client_name: '', platform: '', description: '', date: formatDate(new Date()) })
   const exportRef = useRef(null)
 
   // MD 解析
@@ -363,11 +363,11 @@ export default function Tasks() {
   async function handleOpAdd() {
     if (!newOp.client_name || !newOp.description) return
     await supabase.from('ad_operation_logs').insert({
-      client_name: newOp.client_name, operation_date: formatDate(new Date()),
+      client_name: newOp.client_name, operation_date: newOp.date,
       platform: newOp.platform || null, description: newOp.description,
       raw_message: `(from web) ${newOp.description}`,
     })
-    setNewOp({ client_name: '', platform: '', description: '' })
+    setNewOp({ client_name: '', platform: '', description: '', date: formatDate(new Date()) })
     setShowOpAdd(false)
     fetchOpLogs(); fetchOpClients()
   }
@@ -529,11 +529,20 @@ export default function Tasks() {
               <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700" onClick={e => e.stopPropagation()}>
                 <h2 className="text-lg font-bold text-white mb-4">新增操作記錄</h2>
                 <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-gray-400 block mb-1">客戶</label>
-                    <input list="op-client-list" value={newOp.client_name} onChange={e => setNewOp({ ...newOp, client_name: e.target.value })}
-                      className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600" placeholder="輸入客戶名稱" />
-                    <datalist id="op-client-list">{opClients.map(c => <option key={c} value={c} />)}</datalist>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm text-gray-400 block mb-1">客戶</label>
+                      <select value={newOp.client_name} onChange={e => setNewOp({ ...newOp, client_name: e.target.value })}
+                        className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600">
+                        <option value="">選擇客戶</option>
+                        {opClients.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400 block mb-1">日期</label>
+                      <input type="date" value={newOp.date} onChange={e => setNewOp({ ...newOp, date: e.target.value })}
+                        className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600" />
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm text-gray-400 block mb-1">平台</label>
