@@ -53,9 +53,11 @@ export default function Tasks() {
   const [opLogs, setOpLogs] = useState([])
   const [opLoading, setOpLoading] = useState(false)
   const [opFilterClient, setOpFilterClient] = useState('')
-  const [opViewMode, setOpViewMode] = useState('week')
+  const [opViewMode, setOpViewMode] = useState('week') // 'week' | 'month' | 'custom'
   const [opWeekOffset, setOpWeekOffset] = useState(0)
   const [opMonthDate, setOpMonthDate] = useState(new Date())
+  const [opCustomStart, setOpCustomStart] = useState(formatDate(new Date()))
+  const [opCustomEnd, setOpCustomEnd] = useState(formatDate(new Date()))
   const [opClients, setOpClients] = useState([])
   const [showOpAdd, setShowOpAdd] = useState(false)
   const [newOp, setNewOp] = useState({ client_name: '', platforms: [], description: '', date: formatDate(new Date()) })
@@ -71,9 +73,11 @@ export default function Tasks() {
   })
   const opMonthDays = getMonthDays(opMonthDate.getFullYear(), opMonthDate.getMonth())
   const opCurrentMonth = opMonthDate.getMonth()
-  const opQueryStart = opViewMode === 'week' ? formatDate(opWeekDays[0]) : formatDate(opMonthDays[0])
-  const opQueryEnd = opViewMode === 'week' ? formatDate(opWeekDays[4]) : formatDate(opMonthDays[opMonthDays.length - 1])
-  const opDateLabel = opViewMode === 'week'
+  const opQueryStart = opViewMode === 'custom' ? opCustomStart : opViewMode === 'week' ? formatDate(opWeekDays[0]) : formatDate(opMonthDays[0])
+  const opQueryEnd = opViewMode === 'custom' ? opCustomEnd : opViewMode === 'week' ? formatDate(opWeekDays[4]) : formatDate(opMonthDays[opMonthDays.length - 1])
+  const opDateLabel = opViewMode === 'custom'
+    ? `${opCustomStart} ~ ${opCustomEnd}`
+    : opViewMode === 'week'
     ? `${opWeekDays[0].getMonth() + 1}/${opWeekDays[0].getDate()} – ${opWeekDays[4].getMonth() + 1}/${opWeekDays[4].getDate()}`
     : `${opMonthDate.getFullYear()} 年 ${opMonthDate.getMonth() + 1} 月`
 
@@ -365,7 +369,7 @@ export default function Tasks() {
 
   useEffect(() => {
     if (activeTab === 'logs') { fetchOpClients(); fetchOpLogs() }
-  }, [activeTab, opFilterClient, opWeekOffset, opViewMode, opMonthDate])
+  }, [activeTab, opFilterClient, opWeekOffset, opViewMode, opMonthDate, opCustomStart, opCustomEnd])
 
   async function fetchOpClients() {
     const { data: d1 } = await supabase.from('ad_operation_logs').select('client_name')
@@ -501,12 +505,23 @@ export default function Tasks() {
             <div className="flex bg-gray-700 rounded-lg overflow-hidden">
               <button onClick={() => setOpViewMode('week')} className={`px-3 py-1.5 text-sm transition ${opViewMode === 'week' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>週</button>
               <button onClick={() => setOpViewMode('month')} className={`px-3 py-1.5 text-sm transition ${opViewMode === 'month' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>月</button>
+              <button onClick={() => setOpViewMode('custom')} className={`px-3 py-1.5 text-sm transition ${opViewMode === 'custom' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>自訂</button>
             </div>
 
-            <button onClick={() => { if (opViewMode === 'week') setOpWeekOffset(p => p - 1); else setOpMonthDate(d => { const n = new Date(d); n.setMonth(n.getMonth() - 1); return n }) }} className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">◀</button>
-            <span className="text-white font-medium min-w-[160px] text-center">{opDateLabel}</span>
-            <button onClick={() => { if (opViewMode === 'week') setOpWeekOffset(p => p + 1); else setOpMonthDate(d => { const n = new Date(d); n.setMonth(n.getMonth() + 1); return n }) }} className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">▶</button>
-            <button onClick={() => { setOpWeekOffset(0); setOpMonthDate(new Date()) }} className="bg-gray-700 text-gray-300 px-3 py-1 rounded-lg hover:bg-gray-600 text-sm">今天</button>
+            {opViewMode === 'custom' ? (
+              <>
+                <input type="date" value={opCustomStart} onChange={e => setOpCustomStart(e.target.value)} className="bg-gray-700 text-white rounded-lg px-3 py-1.5 border border-gray-600 text-sm" />
+                <span className="text-gray-400">~</span>
+                <input type="date" value={opCustomEnd} onChange={e => setOpCustomEnd(e.target.value)} className="bg-gray-700 text-white rounded-lg px-3 py-1.5 border border-gray-600 text-sm" />
+              </>
+            ) : (
+              <>
+                <button onClick={() => { if (opViewMode === 'week') setOpWeekOffset(p => p - 1); else setOpMonthDate(d => { const n = new Date(d); n.setMonth(n.getMonth() - 1); return n }) }} className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">◀</button>
+                <span className="text-white font-medium min-w-[160px] text-center">{opDateLabel}</span>
+                <button onClick={() => { if (opViewMode === 'week') setOpWeekOffset(p => p + 1); else setOpMonthDate(d => { const n = new Date(d); n.setMonth(n.getMonth() + 1); return n }) }} className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">▶</button>
+                <button onClick={() => { setOpWeekOffset(0); setOpMonthDate(new Date()) }} className="bg-gray-700 text-gray-300 px-3 py-1 rounded-lg hover:bg-gray-600 text-sm">今天</button>
+              </>
+            )}
 
             <select value={opFilterClient} onChange={e => setOpFilterClient(e.target.value)} className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white ml-auto">
               <option value="">全部客戶</option>
@@ -519,6 +534,33 @@ export default function Tasks() {
 
           {/* 週曆 */}
           {opLoading ? <div className="text-center py-10 text-gray-400">載入中...</div> :
+          opViewMode === 'custom' ? (
+            /* 自訂日期 - 列表格式 */
+            opLogs.length === 0 ? <div className="text-center py-20 text-gray-500"><p className="text-4xl mb-4">📝</p><p>此範圍無記錄</p></div> : (
+            <div ref={exportRef} className="space-y-4">
+              {Object.entries(opGrouped).sort(([a], [b]) => b.localeCompare(a)).map(([date, items]) => {
+                const d = new Date(date)
+                const weekday = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
+                return (
+                  <div key={date}>
+                    <h3 className="text-gray-400 text-sm font-medium mb-2">{d.getMonth() + 1}/{d.getDate()} ({weekday}) — {items.length} 筆</h3>
+                    <div className="space-y-1.5">
+                      {items.map(log => (
+                        <div key={log.id} className="bg-gray-800 rounded-lg p-3 border border-gray-700 flex items-start justify-between cursor-pointer hover:bg-gray-750" onClick={() => handleOpClick(log)}>
+                          <div className="flex items-start gap-2">
+                            {parsePlatforms(log.platform).map(p => <span key={p} className={`${opPlatformColors[p]} text-white text-xs px-1.5 py-0.5 rounded`}>{opPlatformLabels[p]}</span>)}
+                            <span className="text-blue-400 font-medium">{log.client_name}</span>
+                            <span className="text-white">{log.description}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+              <div className="text-center text-gray-500 text-sm pt-2">共 {opLogs.length} 筆</div>
+            </div>)
+          ) :
           opViewMode === 'week' ? (
             <div ref={exportRef} className="grid grid-cols-5 gap-3">
               {opWeekDays.map((day, di) => {
