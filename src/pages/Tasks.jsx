@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabaseAgent as supabase } from '../lib/supabase-agent'
 import { supabase as supabaseAd } from '../lib/supabase'
 
@@ -40,6 +40,7 @@ const priorityEmoji = { red: '🔴', yellow: '🟡', green: '🟢' }
 const categoryLabel = { facebook: 'FB', google: 'Google', client: '客戶', keyword: '關鍵字' }
 
 export default function Tasks() {
+  const [activeTab, setActiveTab] = useState('logs') // 'logs' | 'schedule'
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedClient, setSelectedClient] = useState('all')
@@ -47,6 +48,19 @@ export default function Tasks() {
   const [viewMode, setViewMode] = useState('week') // 'week' | 'month'
   const [weekOffset, setWeekOffset] = useState(0)
   const [monthDate, setMonthDate] = useState(new Date())
+
+  // 操作記錄 state
+  const [opLogs, setOpLogs] = useState([])
+  const [opLoading, setOpLoading] = useState(false)
+  const [opFilterClient, setOpFilterClient] = useState('')
+  const [opFilterMonth, setOpFilterMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [opClients, setOpClients] = useState([])
+  const [showOpAdd, setShowOpAdd] = useState(false)
+  const [newOp, setNewOp] = useState({ client_name: '', platform: '', description: '' })
+  const exportRef = useRef(null)
 
   // MD 解析
   const [showParser, setShowParser] = useState(false)
@@ -308,6 +322,92 @@ export default function Tasks() {
     )
   }
 
+  // === 操作記錄相關函式 ===
+  const opPlatformColors = { facebook: 'bg-blue-600', google: 'bg-red-500', line: 'bg-green-500', website: 'bg-purple-500', other: 'bg-gray-500' }
+  const opPlatformLabels = { facebook: 'FB', google: 'Google', line: 'LINE', website: 'Web', other: '其他' }
+
+  useEffect(() => {
+    if (activeTab === 'logs') { fetchOpClients(); fetchOpLogs() }
+  }, [activeTab, opFilterClient, opFilterMonth])
+
+  async function fetchOpClients() {
+    const { data: d1 } = await supabase.from('ad_operation_logs').select('client_name')
+    const { data: d2 } = await supabase.from('ad_tasks').select('client_name')
+    const all = [...(d1 || []), ...(d2 || [])].map(c => c.client_name)
+    setOpClients([...new Set(all)].sort())
+  }
+
+  async function fetchOpLogs() {
+    setOpLoading(true)
+    const [year, month] = opFilterMonth.split('-').map(Number)
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const nextMonth = month + 1 > 12 ? 1 : month + 1
+    const nextYear = month + 1 > 12 ? year + 1 : year
+    const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
+
+    let query = supabase.from('ad_operation_logs').select('*')
+      .gte('operation_date', startDate).lt('operation_date', endDate)
+      .order('operation_date', { ascending: false })
+    if (opFilterClient) query = query.eq('client_name', opFilterClient)
+
+    const { data } = await query
+    setOpLogs(data || [])
+    setOpLoading(false)
+  }
+
+  async function handleOpAdd() {
+    if (!newOp.client_name || !newOp.description) return
+    await supabase.from('ad_operation_logs').insert({
+      client_name: newOp.client_name, operation_date: formatDate(new Date()),
+      platform: newOp.platform || null, description: newOp.description,
+      raw_message: `(from web) ${newOp.description}`,
+    })
+    setNewOp({ client_name: '', platform: '', description: '' })
+    setShowOpAdd(false)
+    fetchOpLogs(); fetchOpClients()
+  }
+
+  async function handleOpDelete(id) {
+    if (!confirm('確定要刪除？')) return
+    await supabase.from('ad_operation_logs').delete().eq('id', id)
+    fetchOpLogs()
+  }
+
+  async function handleOpExportMD() {
+    const [, month] = opFilterMonth.split('-').map(Number)
+    const clientLabel = opFilterClient || '全部客戶'
+    const grouped = {}
+    opLogs.forEach(l => { if (!grouped[l.operation_date]) grouped[l.operation_date] = []; grouped[l.operation_date].push(l) })
+    let md = `# ${clientLabel} ${month}月操作記錄\n\n`
+    Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).forEach(([date, items]) => {
+      const d = new Date(date)
+      md += `## ${d.getMonth() + 1}/${d.getDate()}\n`
+      items.forEach(l => { md += `- ${l.platform ? `[${l.platform.toUpperCase()}] ` : ''}${l.description}\n` })
+      md += '\n'
+    })
+    md += `---\n共 ${opLogs.length} 筆操作\n`
+    const blob = new Blob([md], { type: 'text/markdown' })
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
+    a.download = `${clientLabel}_${month}月操作記錄.md`; a.click()
+  }
+
+  async function handleOpExportPDF() {
+    const html2pdf = (await import('html2pdf.js')).default
+    const [, month] = opFilterMonth.split('-').map(Number)
+    const clientLabel = opFilterClient || '全部客戶'
+    await html2pdf().set({
+      margin: [15, 15, 15, 15], filename: `${clientLabel}_${month}月操作記錄.pdf`,
+      image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    }).from(exportRef.current).save()
+  }
+
+  // 操作記錄按日期分組
+  const opGrouped = {}
+  opLogs.forEach(l => { if (!opGrouped[l.operation_date]) opGrouped[l.operation_date] = []; opGrouped[l.operation_date].push(l) })
+  const opClientCount = {}; opLogs.forEach(l => { opClientCount[l.client_name] = (opClientCount[l.client_name] || 0) + 1 })
+  const opPlatformCount = {}; opLogs.forEach(l => { const p = l.platform || 'other'; opPlatformCount[p] = (opPlatformCount[p] || 0) + 1 })
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -327,6 +427,136 @@ export default function Tasks() {
           </button>
         </div>
       </div>
+
+      {/* Tab 切換 */}
+      <div className="flex gap-1 bg-gray-800 rounded-lg p-1 w-fit">
+        <button onClick={() => setActiveTab('logs')} className={`px-4 py-2 rounded-md text-sm font-medium transition ${activeTab === 'logs' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+          📝 操作記錄
+        </button>
+        <button onClick={() => setActiveTab('schedule')} className={`px-4 py-2 rounded-md text-sm font-medium transition ${activeTab === 'schedule' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+          📋 排程任務
+        </button>
+      </div>
+
+      {/* ===== 操作記錄 Tab ===== */}
+      {activeTab === 'logs' && (
+        <div className="space-y-6">
+          {/* 篩選 + 按鈕 */}
+          <div className="flex justify-between items-center">
+            <div className="flex gap-3">
+              <select value={opFilterClient} onChange={e => setOpFilterClient(e.target.value)} className="bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 text-sm">
+                <option value="">全部客戶</option>
+                {opClients.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <input type="month" value={opFilterMonth} onChange={e => setOpFilterMonth(e.target.value)} className="bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 text-sm" />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowOpAdd(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">+ 新增</button>
+              <button onClick={handleOpExportMD} disabled={opLogs.length === 0} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-sm disabled:opacity-50">MD</button>
+              <button onClick={handleOpExportPDF} disabled={opLogs.length === 0} className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm disabled:opacity-50">PDF</button>
+            </div>
+          </div>
+
+          {/* 統計 */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 text-center">
+              <p className="text-2xl font-bold text-white">{opLogs.length}</p>
+              <p className="text-xs text-gray-400">本月操作</p>
+            </div>
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 text-center">
+              <p className="text-2xl font-bold text-white">{Object.keys(opClientCount).length}</p>
+              <p className="text-xs text-gray-400">涵蓋客戶</p>
+            </div>
+            {Object.entries(opPlatformCount).slice(0, 2).map(([p, count]) => (
+              <div key={p} className="bg-gray-800 rounded-xl border border-gray-700 p-4 text-center">
+                <p className="text-2xl font-bold text-white">{count}</p>
+                <p className="text-xs text-gray-400">{opPlatformLabels[p] || p}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* 記錄列表 */}
+          {opLoading ? <p className="text-gray-400">載入中...</p> : opLogs.length === 0 ? (
+            <div className="text-center py-20 text-gray-500">
+              <p className="text-4xl mb-4">📝</p>
+              <p>還沒有操作記錄</p>
+              <p className="text-sm mt-2">在 LINE 跟 AI 說你做了什麼，或點右上角新增</p>
+            </div>
+          ) : (
+            <div ref={exportRef} className="space-y-6">
+              {Object.entries(opGrouped).sort(([a], [b]) => b.localeCompare(a)).map(([date, items]) => {
+                const d = new Date(date)
+                const weekday = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
+                return (
+                  <div key={date}>
+                    <h3 className="text-gray-400 text-sm font-medium mb-3">{d.getMonth() + 1}/{d.getDate()} ({weekday}) — {items.length} 筆</h3>
+                    <div className="space-y-2">
+                      {items.map(log => (
+                        <div key={log.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700 flex items-start justify-between group">
+                          <div className="flex items-start gap-3">
+                            {log.platform && (
+                              <span className={`${opPlatformColors[log.platform] || 'bg-gray-500'} text-white text-xs px-2 py-1 rounded font-medium mt-0.5`}>
+                                {opPlatformLabels[log.platform] || log.platform}
+                              </span>
+                            )}
+                            <div>
+                              <span className="text-blue-400 font-medium mr-2">{log.client_name}</span>
+                              <span className="text-white">{log.description}</span>
+                            </div>
+                          </div>
+                          <button onClick={() => handleOpDelete(log.id)} className="text-red-400 hover:text-red-300 text-sm opacity-0 group-hover:opacity-100 transition-opacity ml-4 shrink-0">刪除</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* 新增 Modal */}
+          {showOpAdd && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowOpAdd(false)}>
+              <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700" onClick={e => e.stopPropagation()}>
+                <h2 className="text-lg font-bold text-white mb-4">新增操作記錄</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-1">客戶</label>
+                    <input list="op-client-list" value={newOp.client_name} onChange={e => setNewOp({ ...newOp, client_name: e.target.value })}
+                      className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600" placeholder="輸入客戶名稱" />
+                    <datalist id="op-client-list">{opClients.map(c => <option key={c} value={c} />)}</datalist>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-1">平台</label>
+                    <select value={newOp.platform} onChange={e => setNewOp({ ...newOp, platform: e.target.value })}
+                      className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600">
+                      <option value="">不指定</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="google">Google</option>
+                      <option value="line">LINE</option>
+                      <option value="website">Website</option>
+                      <option value="other">其他</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-1">操作內容</label>
+                    <textarea value={newOp.description} onChange={e => setNewOp({ ...newOp, description: e.target.value })}
+                      className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 h-24 resize-none" placeholder="調整 ROAS 出價從 15 改 20" />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <button onClick={() => setShowOpAdd(false)} className="px-4 py-2 text-gray-400 hover:text-white">取消</button>
+                  <button onClick={handleOpAdd} disabled={!newOp.client_name || !newOp.description}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50">儲存</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===== 排程任務 Tab ===== */}
+      {activeTab === 'schedule' && <>
 
       {/* 統計摘要 */}
       <div className="grid grid-cols-4 gap-3">
@@ -673,6 +903,8 @@ export default function Tasks() {
           </div>
         </div>
       )}
+
+      </>}
     </div>
   )
 }
