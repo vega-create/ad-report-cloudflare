@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabaseAgent as supabase } from '../lib/supabase-agent'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler } from 'chart.js'
 import { Pie, Line } from 'react-chartjs-2'
@@ -31,6 +31,11 @@ export default function DailyPlans() {
   const [newPlan, setNewPlan] = useState({ category: '學習進度', description: '' })
   const [editingPlan, setEditingPlan] = useState(null)
   const [editForm, setEditForm] = useState({ category: '', description: '' })
+  const [exportStart, setExportStart] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01` })
+  const [exportEnd, setExportEnd] = useState(() => fmt(new Date()))
+  const [exportData, setExportData] = useState([])
+  const [exportLoading, setExportLoading] = useState(false)
+  const analysisRef = useRef(null)
 
   const year = monthDate.getFullYear(), month = monthDate.getMonth()
   const monthDays = useMemo(() => getMonthDays(year, month), [year, month])
@@ -74,6 +79,69 @@ export default function DailyPlans() {
     if (!confirm('確定要刪除？')) return
     await supabase.from('daily_plans').delete().eq('id', id)
     setEditingPlan(null); fetchPlans()
+  }
+
+  // 匯出：抓自訂範圍資料
+  async function fetchExportData() {
+    setExportLoading(true)
+    const { data } = await supabase.from('daily_plans').select('*')
+      .gte('plan_date', exportStart).lte('plan_date', exportEnd)
+      .order('plan_date').order('category').order('created_at')
+    setExportData(data || [])
+    setExportLoading(false)
+    return data || []
+  }
+
+  async function exportCSV() {
+    const data = await fetchExportData()
+    if (data.length === 0) { alert('此範圍無資料'); return }
+    const header = '日期,類別,內容,狀態,完成時間\n'
+    const rows = data.map(p => `${p.plan_date},${p.category},${p.description.replace(/,/g,'，')},${p.is_done ? '已完成' : '未完成'},${p.completed_at ? new Date(p.completed_at).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}) : ''}`).join('\n')
+    const bom = '﻿'
+    const blob = new Blob([bom + header + rows], { type: 'text/csv;charset=utf-8' })
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
+    a.download = `每日計畫_${exportStart}_${exportEnd}.csv`; a.click()
+  }
+
+  async function exportMD() {
+    const data = await fetchExportData()
+    if (data.length === 0) { alert('此範圍無資料'); return }
+    const grouped = {}
+    data.forEach(p => { if (!grouped[p.plan_date]) grouped[p.plan_date] = []; grouped[p.plan_date].push(p) })
+    const total = data.length, done = data.filter(p => p.is_done).length
+    const catCount = {}
+    categories.forEach(c => { const cp = data.filter(p => p.category === c); catCount[c] = { total: cp.length, done: cp.filter(p => p.is_done).length } })
+
+    let md = `# 每日計畫報告\n📅 ${exportStart} ~ ${exportEnd}\n\n`
+    md += `## 總覽\n- 總計畫：${total} 項\n- 已完成：${done} 項（${total > 0 ? Math.round(done/total*100) : 0}%）\n\n`
+    md += `## 類別統計\n`
+    categories.forEach(c => {
+      const s = catCount[c]
+      if (s.total > 0) md += `- ${catEmoji[c]} ${c}：${s.done}/${s.total}（${Math.round(s.done/s.total*100)}%）\n`
+    })
+    md += `\n## 每日明細\n\n`
+    Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b)).forEach(([date, items]) => {
+      const d = new Date(date)
+      const wd = ['日','一','二','三','四','五','六'][d.getDay()]
+      md += `### ${d.getMonth()+1}/${d.getDate()}（${wd}）\n`
+      items.forEach(p => { md += `- ${p.is_done ? '✅' : '⬜'} [${catEmoji[p.category]} ${p.category.replace('進度','')}] ${p.description}\n` })
+      md += '\n'
+    })
+    const blob = new Blob([md], { type: 'text/markdown' })
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
+    a.download = `每日計畫_${exportStart}_${exportEnd}.md`; a.click()
+  }
+
+  async function exportPDF() {
+    const data = await fetchExportData()
+    if (data.length === 0) { alert('此範圍無資料'); return }
+    if (!analysisRef.current) return
+    const html2pdf = (await import('html2pdf.js')).default
+    await html2pdf().set({
+      margin: [15,15,15,15], filename: `每日計畫_${exportStart}_${exportEnd}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    }).from(analysisRef.current).save()
   }
 
   // 月統計
@@ -231,6 +299,20 @@ export default function DailyPlans() {
       {/* ===== 分析 Tab ===== */}
       {tab === 'analysis' && !loading && (
         <div className="space-y-6">
+          {/* 匯出工具列 */}
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 flex flex-wrap items-center gap-3">
+            <span className="text-gray-400 text-sm">匯出範圍：</span>
+            <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} className="bg-gray-700 text-white rounded-lg px-3 py-1.5 border border-gray-600 text-sm" />
+            <span className="text-gray-400">~</span>
+            <input type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="bg-gray-700 text-white rounded-lg px-3 py-1.5 border border-gray-600 text-sm" />
+            <div className="flex gap-2 ml-auto">
+              <button onClick={exportCSV} className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-1.5 rounded-lg text-sm">CSV</button>
+              <button onClick={exportMD} className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-1.5 rounded-lg text-sm">MD</button>
+              <button onClick={exportPDF} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-lg text-sm">PDF</button>
+            </div>
+          </div>
+
+          <div ref={analysisRef}>
           {/* 每日趨勢 */}
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
             <h3 className="text-white font-semibold mb-4">📈 每日計畫 vs 完成</h3>
@@ -288,6 +370,7 @@ export default function DailyPlans() {
               )
             })}
           </div>
+          </div>{/* close analysisRef */}
         </div>
       )}
 
