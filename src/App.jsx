@@ -14,6 +14,7 @@ import AgentTasks from './pages/AgentTasks'
 import Tasks from './pages/Tasks'
 import QuickLogs from './pages/QuickLogs'
 import OperationLogs from './pages/OperationLogs'
+import DailyPlans from './pages/DailyPlans'
 import Guide from './pages/Guide'
 import Architecture from './pages/Architecture'
 import Proposals from './pages/Proposals'
@@ -42,6 +43,7 @@ function App() {
           <Route path="tasks" element={<Tasks />} />
           <Route path="quick-logs" element={<QuickLogs />} />
           <Route path="operation-logs" element={<OperationLogs />} />
+          <Route path="daily-plans" element={<DailyPlans />} />
           <Route path="agent" element={<AgentDashboard />} />
           <Route path="agent/messages" element={<AgentMessages />} />
           <Route path="agent/tasks" element={<AgentTasks />} />

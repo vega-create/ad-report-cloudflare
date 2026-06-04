@@ -10,6 +10,7 @@ export default function Layout() {
     { path: '/proposals', label: '提案', icon: '📑' },
     { path: '/tasks', label: '廣告任務', icon: '📋' },
     { path: '/quick-logs', label: '快速記錄', icon: '⚡' },
+    { path: '/daily-plans', label: '每日計畫', icon: '🎯' },
     { path: '/agent', label: '智慧媽咪', icon: '🤖' },
     { path: '/agent/tasks', label: '任務管理', icon: '📋' },
     { path: '/guide', label: '使用說明', icon: '📖' },
