@@ -63,6 +63,8 @@ export default function Tasks() {
   const [newOp, setNewOp] = useState({ client_name: '', platforms: [], description: '', date: formatDate(new Date()) })
   const [editingOp, setEditingOp] = useState(null)
   const [editForm, setEditForm] = useState({ client_name: '', platforms: [], description: '', date: '' })
+  const [opSaving, setOpSaving] = useState(false)
+  const [taskSaving, setTaskSaving] = useState(false)
   const exportRef = useRef(null)
 
   // 操作記錄日曆計算
@@ -193,80 +195,99 @@ export default function Tasks() {
   }
 
   async function handleConfirmSave() {
-    const rows = parsedTasks.map(t => ({
-      client_name: clientName,
-      report_date: reportDate || formatDate(new Date()),
-      task: t.task,
-      category: t.category,
-      priority: t.priority,
-      estimated_minutes: t.estimated_minutes,
-      scheduled_date: t.scheduled_date,
-      scheduled_time: t.scheduled_time,
-      status: 'pending',
-    }))
-    await supabase.from('ad_tasks').insert(rows)
-    setParsedTasks([])
-    setShowConfirm(false)
-    setShowParser(false)
-    setMarkdown('')
-    setClientName('')
-    loadTasks()
+    if (taskSaving) return
+    setTaskSaving(true)
+    try {
+      const rows = parsedTasks.map(t => ({
+        client_name: clientName,
+        report_date: reportDate || formatDate(new Date()),
+        task: t.task,
+        category: t.category,
+        priority: t.priority,
+        estimated_minutes: t.estimated_minutes,
+        scheduled_date: t.scheduled_date,
+        scheduled_time: t.scheduled_time,
+        status: 'pending',
+      }))
+      await supabase.from('ad_tasks').insert(rows)
+      setParsedTasks([])
+      setShowConfirm(false)
+      setShowParser(false)
+      setMarkdown('')
+      setClientName('')
+      loadTasks()
+    } finally { setTaskSaving(false) }
   }
 
   // 快速新增任務
   async function handleQuickAdd() {
-    if (!quickTask.trim() || !quickClient.trim()) return
-    const row = {
-      client_name: quickClient,
-      report_date: quickDate,
-      task: quickTask,
-      category: quickCategory,
-      priority: quickPriority,
-      estimated_minutes: quickMinutes,
-      scheduled_date: quickDate,
-      scheduled_time: quickTime,
-      status: 'pending',
-      outcome_note: quickNote || null,
-    }
-    await supabase.from('ad_tasks').insert([row])
-    setShowQuickAdd(false)
-    setQuickTask('')
-    setQuickNote('')
-    loadTasks()
+    if (!quickTask.trim() || !quickClient.trim() || taskSaving) return
+    setTaskSaving(true)
+    try {
+      const row = {
+        client_name: quickClient,
+        report_date: quickDate,
+        task: quickTask,
+        category: quickCategory,
+        priority: quickPriority,
+        estimated_minutes: quickMinutes,
+        scheduled_date: quickDate,
+        scheduled_time: quickTime,
+        status: 'pending',
+        outcome_note: quickNote || null,
+      }
+      await supabase.from('ad_tasks').insert([row])
+      setShowQuickAdd(false)
+      setQuickTask('')
+      setQuickNote('')
+      loadTasks()
+    } finally { setTaskSaving(false) }
   }
 
   // 完成任務
   async function handleComplete(taskId) {
-    await supabase.from('ad_tasks').update({
-      status: 'done',
-      completed_at: new Date().toISOString(),
-      outcome_note: outcomeNote || null,
-      include_in_next_report: outcomeNote ? true : false,
-    }).eq('id', taskId)
-    setCompletingTask(null)
-    setOutcomeNote('')
-    loadTasks()
+    if (taskSaving) return
+    setTaskSaving(true)
+    try {
+      await supabase.from('ad_tasks').update({
+        status: 'done',
+        completed_at: new Date().toISOString(),
+        outcome_note: outcomeNote || null,
+        include_in_next_report: outcomeNote ? true : false,
+      }).eq('id', taskId)
+      setCompletingTask(null)
+      setOutcomeNote('')
+      loadTasks()
+    } finally { setTaskSaving(false) }
   }
 
   // 取消任務
   async function handleCancel(taskId) {
-    await supabase.from('ad_tasks').update({ status: 'cancelled' }).eq('id', taskId)
-    setCompletingTask(null)
-    setOutcomeNote('')
-    loadTasks()
+    if (taskSaving) return
+    setTaskSaving(true)
+    try {
+      await supabase.from('ad_tasks').update({ status: 'cancelled' }).eq('id', taskId)
+      setCompletingTask(null)
+      setOutcomeNote('')
+      loadTasks()
+    } finally { setTaskSaving(false) }
   }
 
   // 延後任務到明天
   async function handlePostpone(taskId) {
-    const task = tasks.find(t => t.id === taskId)
-    if (!task) return
-    const date = new Date(task.scheduled_date)
-    date.setDate(date.getDate() + 1)
-    const newDate = formatDate(date)
-    await supabase.from('ad_tasks').update({ scheduled_date: newDate }).eq('id', taskId)
-    setCompletingTask(null)
-    setOutcomeNote('')
-    loadTasks()
+    if (taskSaving) return
+    setTaskSaving(true)
+    try {
+      const task = tasks.find(t => t.id === taskId)
+      if (!task) return
+      const date = new Date(task.scheduled_date)
+      date.setDate(date.getDate() + 1)
+      const newDate = formatDate(date)
+      await supabase.from('ad_tasks').update({ scheduled_date: newDate }).eq('id', taskId)
+      setCompletingTask(null)
+      setOutcomeNote('')
+      loadTasks()
+    } finally { setTaskSaving(false) }
   }
 
   // 修改任務日期
@@ -395,15 +416,18 @@ export default function Tasks() {
   }
 
   async function handleOpAdd() {
-    if (!newOp.client_name || !newOp.description) return
-    await supabase.from('ad_operation_logs').insert({
-      client_name: newOp.client_name, operation_date: newOp.date,
-      platform: newOp.platforms.length > 0 ? newOp.platforms.join(',') : null,
-      description: newOp.description, raw_message: `(from web) ${newOp.description}`,
-    })
-    setNewOp({ client_name: '', platforms: [], description: '', date: formatDate(new Date()) })
-    setShowOpAdd(false)
-    fetchOpLogs(); fetchOpClients()
+    if (!newOp.client_name || !newOp.description || opSaving) return
+    setOpSaving(true)
+    try {
+      await supabase.from('ad_operation_logs').insert({
+        client_name: newOp.client_name, operation_date: newOp.date,
+        platform: newOp.platforms.length > 0 ? newOp.platforms.join(',') : null,
+        description: newOp.description, raw_message: `(from web) ${newOp.description}`,
+      })
+      setNewOp({ client_name: '', platforms: [], description: '', date: formatDate(new Date()) })
+      setShowOpAdd(false)
+      fetchOpLogs(); fetchOpClients()
+    } finally { setOpSaving(false) }
   }
 
   function handleOpClick(log) {
@@ -418,20 +442,26 @@ export default function Tasks() {
   }
 
   async function handleOpUpdate() {
-    if (!editingOp || !editForm.description) return
-    await supabase.from('ad_operation_logs').update({
-      client_name: editForm.client_name, platform: editForm.platforms.length > 0 ? editForm.platforms.join(',') : null,
-      description: editForm.description, operation_date: editForm.date,
-    }).eq('id', editingOp.id)
-    setEditingOp(null)
-    fetchOpLogs()
+    if (!editingOp || !editForm.description || opSaving) return
+    setOpSaving(true)
+    try {
+      await supabase.from('ad_operation_logs').update({
+        client_name: editForm.client_name, platform: editForm.platforms.length > 0 ? editForm.platforms.join(',') : null,
+        description: editForm.description, operation_date: editForm.date,
+      }).eq('id', editingOp.id)
+      setEditingOp(null)
+      fetchOpLogs()
+    } finally { setOpSaving(false) }
   }
 
   async function handleOpDelete(id) {
-    if (!confirm('確定要刪除？')) return
-    await supabase.from('ad_operation_logs').delete().eq('id', id)
-    setEditingOp(null)
-    fetchOpLogs()
+    if (!confirm('確定要刪除？') || opSaving) return
+    setOpSaving(true)
+    try {
+      await supabase.from('ad_operation_logs').delete().eq('id', id)
+      setEditingOp(null)
+      fetchOpLogs()
+    } finally { setOpSaving(false) }
   }
 
   async function handleOpExportMD() {
@@ -659,11 +689,11 @@ export default function Tasks() {
                   </div>
                 </div>
                 <div className="flex justify-between mt-6">
-                  <button onClick={() => handleOpDelete(editingOp.id)} className="px-4 py-2 text-red-400 hover:text-red-300">🗑️ 刪除</button>
+                  <button onClick={() => handleOpDelete(editingOp.id)} disabled={opSaving} className="px-4 py-2 text-red-400 hover:text-red-300 disabled:opacity-50">🗑️ 刪除</button>
                   <div className="flex gap-3">
-                    <button onClick={() => setEditingOp(null)} className="px-4 py-2 text-gray-400 hover:text-white">取消</button>
-                    <button onClick={handleOpUpdate} disabled={!editForm.description}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50">儲存</button>
+                    <button onClick={() => setEditingOp(null)} disabled={opSaving} className="px-4 py-2 text-gray-400 hover:text-white">取消</button>
+                    <button onClick={handleOpUpdate} disabled={!editForm.description || opSaving}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50">{opSaving ? '儲存中...' : '儲存'}</button>
                   </div>
                 </div>
               </div>
@@ -702,9 +732,9 @@ export default function Tasks() {
                   </div>
                 </div>
                 <div className="flex justify-end gap-3 mt-6">
-                  <button onClick={() => setShowOpAdd(false)} className="px-4 py-2 text-gray-400 hover:text-white">取消</button>
-                  <button onClick={handleOpAdd} disabled={!newOp.client_name || !newOp.description}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50">儲存</button>
+                  <button onClick={() => setShowOpAdd(false)} disabled={opSaving} className="px-4 py-2 text-gray-400 hover:text-white">取消</button>
+                  <button onClick={handleOpAdd} disabled={!newOp.client_name || !newOp.description || opSaving}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50">{opSaving ? '儲存中...' : '儲存'}</button>
                 </div>
               </div>
             </div>
@@ -790,11 +820,11 @@ export default function Tasks() {
             ))}
           </div>
           <div className="flex space-x-2">
-            <button onClick={handleConfirmSave}
-              className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
-              確認存入
+            <button onClick={handleConfirmSave} disabled={taskSaving}
+              className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50">
+              {taskSaving ? '存入中...' : '確認存入'}
             </button>
-            <button onClick={() => { setShowConfirm(false); setParsedTasks([]) }}
+            <button onClick={() => { setShowConfirm(false); setParsedTasks([]) }} disabled={taskSaving}
               className="bg-gray-700 text-gray-300 px-6 py-2 rounded-lg hover:bg-gray-600 transition">
               取消
             </button>
@@ -1000,11 +1030,11 @@ export default function Tasks() {
                 placeholder="例：本月花費 $15,000、下次調降 CPC" />
             </div>
             <div className="flex gap-2">
-              <button onClick={handleQuickAdd} disabled={!quickTask.trim() || !quickClient}
+              <button onClick={handleQuickAdd} disabled={!quickTask.trim() || !quickClient || taskSaving}
                 className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50">
-                新增
+                {taskSaving ? '新增中...' : '新增'}
               </button>
-              <button onClick={() => setShowQuickAdd(false)}
+              <button onClick={() => setShowQuickAdd(false)} disabled={taskSaving}
                 className="bg-gray-700 text-gray-300 px-6 py-2 rounded-lg hover:bg-gray-600 transition">
                 取消
               </button>
@@ -1040,19 +1070,19 @@ export default function Tasks() {
                 className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="flex flex-wrap gap-2">
-              <button onClick={() => handleComplete(completingTask.id)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
-                ✅ 完成
+              <button onClick={() => handleComplete(completingTask.id)} disabled={taskSaving}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50">
+                {taskSaving ? '處理中...' : '✅ 完成'}
               </button>
-              <button onClick={() => handlePostpone(completingTask.id)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+              <button onClick={() => handlePostpone(completingTask.id)} disabled={taskSaving}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50">
                 📅 延後一天
               </button>
-              <button onClick={() => handleCancel(completingTask.id)}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+              <button onClick={() => handleCancel(completingTask.id)} disabled={taskSaving}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition disabled:opacity-50">
                 🗑️ 取消任務
               </button>
-              <button onClick={() => setCompletingTask(null)}
+              <button onClick={() => setCompletingTask(null)} disabled={taskSaving}
                 className="bg-gray-700 text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-600 transition">
                 關閉
               </button>

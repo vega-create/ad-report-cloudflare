@@ -35,6 +35,7 @@ export default function DailyPlans() {
   const [newPlan, setNewPlan] = useState({ category: '學習進度', description: '' })
   const [editingPlan, setEditingPlan] = useState(null)
   const [editForm, setEditForm] = useState({ category: '', description: '' })
+  const [saving, setSaving] = useState(false)
   const analysisRef = useRef(null)
   const todayStr = fmt(new Date())
 
@@ -64,27 +65,40 @@ export default function DailyPlans() {
   }
 
   async function handleAdd() {
-    if (!newPlan.description) return
-    for (const item of newPlan.description.split(/[、，,]/).map(s => s.trim()).filter(Boolean)) {
-      await supabase.from('daily_plans').insert({ plan_date: addDate, category: newPlan.category, description: item })
-    }
-    setNewPlan({ category: '學習進度', description: '' }); setShowAdd(false); fetchPlans()
+    if (!newPlan.description || saving) return
+    setSaving(true)
+    try {
+      for (const item of newPlan.description.split(/[、，,]/).map(s => s.trim()).filter(Boolean)) {
+        await supabase.from('daily_plans').insert({ plan_date: addDate, category: newPlan.category, description: item })
+      }
+      setNewPlan({ category: '學習進度', description: '' }); setShowAdd(false); fetchPlans()
+    } finally { setSaving(false) }
   }
 
   async function handleToggle(plan) {
-    await supabase.from('daily_plans').update({ is_done: !plan.is_done, completed_at: !plan.is_done ? new Date().toISOString() : null }).eq('id', plan.id)
-    fetchPlans()
+    if (saving) return
+    setSaving(true)
+    try {
+      await supabase.from('daily_plans').update({ is_done: !plan.is_done, completed_at: !plan.is_done ? new Date().toISOString() : null }).eq('id', plan.id)
+      fetchPlans()
+    } finally { setSaving(false) }
   }
 
   async function handleUpdate() {
-    if (!editingPlan || !editForm.description) return
-    await supabase.from('daily_plans').update({ category: editForm.category, description: editForm.description }).eq('id', editingPlan.id)
-    setEditingPlan(null); fetchPlans()
+    if (!editingPlan || !editForm.description || saving) return
+    setSaving(true)
+    try {
+      await supabase.from('daily_plans').update({ category: editForm.category, description: editForm.description }).eq('id', editingPlan.id)
+      setEditingPlan(null); fetchPlans()
+    } finally { setSaving(false) }
   }
 
   async function handleDelete(id) {
-    if (!confirm('確定要刪除？')) return
-    await supabase.from('daily_plans').delete().eq('id', id); setEditingPlan(null); fetchPlans()
+    if (!confirm('確定要刪除？') || saving) return
+    setSaving(true)
+    try {
+      await supabase.from('daily_plans').delete().eq('id', id); setEditingPlan(null); fetchPlans()
+    } finally { setSaving(false) }
   }
 
   // 匯出
@@ -371,8 +385,8 @@ export default function DailyPlans() {
                 <textarea value={newPlan.description} onChange={e => setNewPlan({...newPlan, description: e.target.value})} className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 h-24 resize-none" placeholder="完成Python課程第3章、寫部落格文章" /></div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setShowAdd(false)} className="px-4 py-2 text-gray-400 hover:text-white">取消</button>
-              <button onClick={handleAdd} disabled={!newPlan.description} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50">儲存</button>
+              <button onClick={() => setShowAdd(false)} disabled={saving} className="px-4 py-2 text-gray-400 hover:text-white">取消</button>
+              <button onClick={handleAdd} disabled={!newPlan.description || saving} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50">{saving ? '儲存中...' : '儲存'}</button>
             </div>
           </div>
         </div>
@@ -392,10 +406,10 @@ export default function DailyPlans() {
                 <textarea value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 h-24 resize-none" /></div>
             </div>
             <div className="flex justify-between mt-6">
-              <button onClick={() => handleDelete(editingPlan.id)} className="px-4 py-2 text-red-400 hover:text-red-300">🗑️ 刪除</button>
+              <button onClick={() => handleDelete(editingPlan.id)} disabled={saving} className="px-4 py-2 text-red-400 hover:text-red-300 disabled:opacity-50">🗑️ 刪除</button>
               <div className="flex gap-3">
-                <button onClick={() => setEditingPlan(null)} className="px-4 py-2 text-gray-400 hover:text-white">取消</button>
-                <button onClick={handleUpdate} disabled={!editForm.description} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50">儲存</button>
+                <button onClick={() => setEditingPlan(null)} disabled={saving} className="px-4 py-2 text-gray-400 hover:text-white">取消</button>
+                <button onClick={handleUpdate} disabled={!editForm.description || saving} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50">{saving ? '儲存中...' : '儲存'}</button>
               </div>
             </div>
           </div>
