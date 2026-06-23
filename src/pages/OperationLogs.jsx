@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabaseAgent } from '../lib/supabase-agent'
+import { downloadPdf } from '../lib/pdf'
 
 export default function OperationLogs() {
   const [logs, setLogs] = useState([])
@@ -78,19 +79,9 @@ export default function OperationLogs() {
   }
 
   async function handleExportPDF() {
-    const html2pdf = (await import('html2pdf.js')).default
-    const [year, month] = filterMonth.split('-').map(Number)
+    const [, month] = filterMonth.split('-').map(Number)
     const clientLabel = filterClient || '全部客戶'
-    await html2pdf()
-      .set({
-        margin: [15, 15, 15, 15],
-        filename: `${clientLabel}_${month}月操作記錄.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      })
-      .from(exportRef.current)
-      .save()
+    await downloadPdf(exportRef.current, `${clientLabel}_${month}月操作記錄.pdf`, { fallback: 'reload' })
   }
 
   function handleExportMD() {

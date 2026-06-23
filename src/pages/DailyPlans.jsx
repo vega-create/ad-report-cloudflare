@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabaseAgent as supabase } from '../lib/supabase-agent'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler } from 'chart.js'
 import { Pie, Line } from 'react-chartjs-2'
+import { downloadPdf } from '../lib/pdf'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler)
 
@@ -135,8 +136,7 @@ export default function DailyPlans() {
 
   async function exportPDF() {
     if (!analysisRef.current) return
-    const html2pdf = (await import('html2pdf.js')).default
-    await html2pdf().set({ margin:[15,15,15,15], filename:`每日計畫_${qStart}_${qEnd}.pdf`, image:{type:'jpeg',quality:0.98}, html2canvas:{scale:2}, jsPDF:{unit:'mm',format:'a4',orientation:'portrait'} }).from(analysisRef.current).save()
+    await downloadPdf(analysisRef.current, `每日計畫_${qStart}_${qEnd}.pdf`, { fallback: 'reload' })
   }
 
   // 統計

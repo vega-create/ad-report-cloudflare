@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabaseAgent as supabase } from '../lib/supabase-agent'
 import { supabase as supabaseAd } from '../lib/supabase'
+import { downloadPdf } from '../lib/pdf'
 
 function getMonday(d) {
   const date = new Date(d)
@@ -482,13 +483,8 @@ export default function Tasks() {
   }
 
   async function handleOpExportPDF() {
-    const html2pdf = (await import('html2pdf.js')).default
     const clientLabel = opFilterClient || '全部客戶'
-    await html2pdf().set({
-      margin: [15, 15, 15, 15], filename: `${clientLabel}_${opDateLabel}_操作記錄.pdf`,
-      image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-    }).from(exportRef.current).save()
+    await downloadPdf(exportRef.current, `${clientLabel}_${opDateLabel}_操作記錄.pdf`, { fallback: 'reload', orientation: 'landscape' })
   }
 
   // 操作記錄按日期分組
