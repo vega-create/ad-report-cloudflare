@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { downloadPdf } from '../lib/pdf'
 export default function PublicReport() {
   const { id } = useParams()
   const [report, setReport] = useState(null)
@@ -21,18 +22,9 @@ export default function PublicReport() {
   const downloadPDF = async () => {
     setDownloading(true)
     try {
-      const html2pdf = (await import('html2pdf.js')).default
-      const element = contentRef.current
       const filename = `${report.clients?.name || '廣告'}_成效報告_${new Date(report.created_at).toLocaleDateString('zh-TW').replace(/\//g, '-')}.pdf`
-      await html2pdf().set({
-        margin: [15, 15, 15, 15],
-        filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      }).from(element).save()
-    } catch (err) { alert('下載失敗') } finally { setDownloading(false) }
+      await downloadPdf(contentRef.current, filename)
+    } finally { setDownloading(false) }
   }
   if (loading) return <div className="min-h-screen bg-white flex items-center justify-center"><div className="text-gray-500">載入中...</div></div>
   if (error || !report) return <div className="min-h-screen bg-white flex items-center justify-center"><div className="text-center"><div className="text-6xl mb-4">📊</div><h1 className="text-2xl font-bold text-gray-800 mb-2">找不到報告</h1></div></div>

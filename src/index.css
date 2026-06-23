@@ -22,3 +22,20 @@ body {
 .public-report .markdown-content td { border-color: #e5e7eb; background-color: white; }
 .public-report .markdown-content tr:nth-child(even) td { background-color: #f8fafc; }
 .public-report .markdown-content tr:hover td { background-color: #eff6ff; }
+
+/* 列印 / 另存為 PDF：只印報告內容，隱藏側邊欄、按鈕等 */
+@media print {
+  body { background: white !important; }
+  body * { visibility: hidden; }
+  .public-report, .public-report * { visibility: visible; }
+  .public-report {
+    position: absolute !important;
+    left: 0; top: 0;
+    width: 100% !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  .no-print, .no-print * { display: none !important; visibility: hidden !important; }
+}

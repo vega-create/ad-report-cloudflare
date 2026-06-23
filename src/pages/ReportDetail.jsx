@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { downloadPdf } from '../lib/pdf'
 export default function ReportDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -62,7 +63,7 @@ export default function ReportDetail() {
           </div>
         </div>
         <div className="flex gap-3">
-          <button onClick={async () => { setDownloading(true); try { const html2pdf = (await import('html2pdf.js')).default; await html2pdf().set({ margin: [15,15,15,15], filename: `${report.clients?.name || '廣告'}_成效報告.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['avoid-all','css','legacy'] } }).from(contentRef.current).save(); } catch(e) { alert('下載失敗') } finally { setDownloading(false) } }} disabled={downloading} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">{downloading ? '下載中...' : '📥 下載 PDF'}</button>
+          <button onClick={async () => { setDownloading(true); try { await downloadPdf(contentRef.current, `${report.clients?.name || '廣告'}_成效報告.pdf`) } finally { setDownloading(false) } }} disabled={downloading} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 no-print">{downloading ? '下載中...' : '📥 下載 PDF'}</button>
           <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/r/${id}`); alert('已複製報告連結！') }} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">🔗 複製連結</button>
           {report.status !== 'published' && <button onClick={publishReport} disabled={publishing} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">{publishing ? '發布中...' : '✅ 發布報告'}</button>}
           <button onClick={openLinePreview} disabled={!report.clients?.line_group_id} className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50">📱 發送到 LINE</button>

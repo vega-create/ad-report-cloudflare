@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { downloadPdf } from '../lib/pdf'
 export default function ProposalDetail() {
   const { id } = useParams()
   const [proposal, setProposal] = useState(null)
@@ -40,7 +41,7 @@ export default function ProposalDetail() {
           </div>
         </div>
         <div className="flex gap-3">
-          <button onClick={async () => { setDownloading(true); try { const html2pdf = (await import('html2pdf.js')).default; await html2pdf().set({ margin: [15,15,15,15], filename: `${proposal.clients?.name ? proposal.clients.name + '_' : ''}${proposal.title}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['avoid-all','css','legacy'] } }).from(contentRef.current).save(); } catch(e) { alert('下載失敗') } finally { setDownloading(false) } }} disabled={downloading} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">{downloading ? '下載中...' : '📥 下載 PDF'}</button>
+          <button onClick={async () => { setDownloading(true); try { await downloadPdf(contentRef.current, `${proposal.clients?.name ? proposal.clients.name + '_' : ''}${proposal.title}.pdf`) } finally { setDownloading(false) } }} disabled={downloading} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 no-print">{downloading ? '下載中...' : '📥 下載 PDF'}</button>
           <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/p/${id}`); alert('已複製提案連結！') }} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">🔗 複製連結</button>
           {proposal.status !== 'published' && <button onClick={publishProposal} disabled={publishing} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">{publishing ? '發布中...' : '✅ 發布'}</button>}
           <Link to={`/proposals/${id}/edit`} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">✏️ 編輯</Link>
