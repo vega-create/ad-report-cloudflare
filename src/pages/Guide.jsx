@@ -26,6 +26,79 @@ export default function Guide() {
         </div>
       </div>
 
+      {/* ⭐ Claude 串接（MCP）流程 */}
+      <div className="bg-gradient-to-br from-purple-900/40 to-gray-800 rounded-xl border border-purple-700/60 p-6 space-y-5">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🤖</span>
+          <h2 className="text-lg font-semibold text-white">Claude 直接寫報告＋排程（MCP 串接）</h2>
+        </div>
+        <p className="text-gray-300 text-sm">
+          Claude（桌面 App / Claude Code）已接上本系統，可以直接讀客戶脈絡、存報告、排任務。<span className="text-purple-300">全程「你開口才做」，不會自動發任何東西給客戶。</span>
+        </p>
+
+        {/* 每月標準流程 */}
+        <div className="bg-gray-900 rounded-lg p-4 space-y-3">
+          <p className="text-purple-300 font-semibold">📅 每月標準流程</p>
+          <ol className="text-sm text-gray-300 space-y-2 list-decimal list-inside">
+            <li>在 Claude 上傳上月數據截圖，<span className="text-white">照平常把狀況講一遍</span></li>
+            <li>說「<span className="text-white">幫我寫寵樂芙的報告</span>」→ Claude 自動撈上期報告、操作記錄、你過去的修改偏好、客戶回饋，用你的廣告 skill 寫</li>
+            <li>在對話裡<span className="text-white">來回改到滿意</span>（它不會自己存）</li>
+            <li>說「<span className="text-white">幫我列我要做的事</span>」→ 產你的內部操作清單</li>
+            <li>兩份都確認後說「<span className="text-white">兩份都丟上去</span>」→ 客戶報告存成<span className="text-yellow-300">草稿</span>＋待辦<span className="text-yellow-300">自動排程</span>（不用給日期，會避開其他客戶已排滿的天）</li>
+            <li>LINE 收到兩則通知（報告短碼、排好的日期）→ 上網頁看過 → 按「發布」＋「發送到 LINE」，或手機回「<span className="text-white">發布 短碼</span>」</li>
+          </ol>
+        </div>
+
+        {/* 對 Claude 說的話 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-cyan-400 font-semibold">整月彙整 / 多份週報</p>
+            <p className="text-sm text-gray-400">「幫我做寵樂芙 <span className="text-white">8 月的月報</span>」→ 會抓該月<span className="text-white">所有</span>報告全文＋整月記錄</p>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-green-400 font-semibold">跟客戶討論後</p>
+            <p className="text-sm text-gray-400">「客戶希望多看渠道拆解」→ 記成<span className="text-white">客戶回饋</span>，下期優先回應</p>
+            <p className="text-sm text-gray-400">「規劃改成…，<span className="text-white">舊的作廢</span>」→ 舊待辦取消、新規劃重排</p>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-blue-400 font-semibold">只改幾項任務</p>
+            <p className="text-sm text-gray-400">「關鍵字擴充<span className="text-white">改到 9/8</span>」「<span className="text-white">取消</span>再行銷那項」「關鍵字擴充<span className="text-white">完成</span>了」</p>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+            <p className="text-orange-400 font-semibold">記錄執行</p>
+            <p className="text-sm text-gray-400">「記錄 寵樂芙 調整 ROAS 出價」→ 進操作記錄，下期報告會帶入</p>
+          </div>
+        </div>
+
+        {/* 手機 LINE 指令 */}
+        <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+          <p className="text-pink-400 font-semibold">📱 手機 LINE 指令（任何群組，只有你能用）</p>
+          <div className="text-sm text-gray-400 space-y-1">
+            <p>「<span className="text-white">發布 短碼</span>」→ 發布並傳給客戶 LINE 群</p>
+            <p>「<span className="text-white">修改 短碼 想改什麼</span>」→ AI 套用小修正並記錄</p>
+            <p>「<span className="text-white">看報告 短碼</span>」→ 看摘要</p>
+            <p>「<span className="text-white">回饋 客戶名 內容</span>」→ 記客戶討論回饋</p>
+            <p>「<span className="text-white">規劃 客戶名 內容</span>」→ 記討論後新規劃</p>
+          </div>
+          <p className="text-xs text-gray-500">短碼＝LINE 通知裡那 8 碼（例如 76200de7）</p>
+        </div>
+
+        {/* 系統會自動學什麼 */}
+        <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+          <p className="text-yellow-300 font-semibold">🧠 系統會記住三種東西（越用越像你）</p>
+          <div className="text-sm text-gray-400 space-y-1">
+            <p>・<span className="text-white">你的寫法偏好</span>：對話中叫它改的、網頁上改的，下期自動套用</p>
+            <p>・<span className="text-white">本期口述背景</span>：你講的狀況，下期延續脈絡</p>
+            <p>・<span className="text-white">客戶回饋與規劃</span>：下期優先回應，並對照「規劃 vs 實際執行」</p>
+          </div>
+        </div>
+
+        <div className="text-xs text-gray-500 space-y-1">
+          <p>⚠️ 存進系統的永遠是「草稿」，沒有你按發布，客戶不會收到。</p>
+          <p>⚠️ Claude 桌面 App 若還沒接：設定 → 連接器 → 新增自訂連接器 → 貼 MCP 網址（跟 Claude Code 同一組）。</p>
+        </div>
+      </div>
+
       {/* Step 1 */}
       <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
         <div className="flex items-center gap-3">
