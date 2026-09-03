@@ -6,7 +6,7 @@ export async function onRequestPost(context) {
   };
 
   try {
-    const { markdown, client_name, report_date } = await context.request.json();
+    const { markdown, client_name, report_date, existing_load } = await context.request.json();
 
     if (!markdown || !client_name) {
       return new Response(JSON.stringify({ error: "缺少 markdown 或 client_name" }), {
@@ -34,7 +34,10 @@ export async function onRequestPost(context) {
 
 Markdown 內容：
 ${markdown}
-
+${Array.isArray(existing_load) && existing_load.length ? `
+已排程負載（所有客戶合計；每天上限 120 分鐘，請避開已滿或接近滿的日子，改排到還有空檔的平日）：
+${existing_load.map(l => `- ${l.date}：已排 ${l.minutes} 分鐘`).join('\n')}
+` : ''}
 請回傳 JSON 陣列，每個任務包含：
 {
   "task": "任務描述",
@@ -50,7 +53,7 @@ ${markdown}
 - 🔴 red（緊急）→ 今天或明天，09:00-10:00
 - 🟡 yellow（重要）→ 本週內，10:00-11:30，同客戶排同天
 - 🟢 green（優化）→ 下週，填補空檔
-- 每天總工時不超過 120 分鐘
+- 每天總工時不超過 120 分鐘（含上述其他客戶已排的負載）
 - 週六日不排任務
 - 同一客戶的任務盡量排同一天
 

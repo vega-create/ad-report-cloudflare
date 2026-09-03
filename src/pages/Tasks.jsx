@@ -49,6 +49,7 @@ export default function Tasks() {
   const [viewMode, setViewMode] = useState('week') // 'week' | 'month'
   const [weekOffset, setWeekOffset] = useState(0)
   const [monthDate, setMonthDate] = useState(new Date())
+  const [expandedDay, setExpandedDay] = useState(null) // 月檢視展開的日期
 
   // 操作記錄 state
   const [opLogs, setOpLogs] = useState([])
@@ -57,6 +58,7 @@ export default function Tasks() {
   const [opViewMode, setOpViewMode] = useState('week') // 'week' | 'month' | 'custom'
   const [opWeekOffset, setOpWeekOffset] = useState(0)
   const [opMonthDate, setOpMonthDate] = useState(new Date())
+  const [opExpandedDay, setOpExpandedDay] = useState(null)
   const [opCustomStart, setOpCustomStart] = useState(formatDate(new Date()))
   const [opCustomEnd, setOpCustomEnd] = useState(formatDate(new Date()))
   const [opClients, setOpClients] = useState([])
@@ -177,10 +179,15 @@ export default function Tasks() {
     if (!markdown.trim() || !clientName.trim()) return
     setIsParsing(true)
     try {
+      // 所有客戶未來 30 天已排的工時 → 讓排程避開已滿的日子（每天上限 120 分鐘）
+      const loadStart = formatDate(new Date()); const loadEndD = new Date(); loadEndD.setDate(loadEndD.getDate() + 30)
+      const { data: pend } = await supabase.from('ad_tasks').select('scheduled_date, estimated_minutes').eq('status', 'pending').gte('scheduled_date', loadStart).lte('scheduled_date', formatDate(loadEndD))
+      const loadMap = {}; (pend || []).forEach(t => { loadMap[t.scheduled_date] = (loadMap[t.scheduled_date] || 0) + (t.estimated_minutes || 0) })
+      const existing_load = Object.entries(loadMap).map(([date, minutes]) => ({ date, minutes }))
       const res = await fetch('/api/parse-tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markdown, client_name: clientName, report_date: reportDate }),
+        body: JSON.stringify({ markdown, client_name: clientName, report_date: reportDate, existing_load }),
       })
       const data = await res.json()
       if (data.tasks) {
@@ -631,20 +638,27 @@ export default function Tasks() {
                   const dayLogs = opLogs.filter(l => l.operation_date === dayStr)
                   const isToday = dayStr === formatDate(new Date())
                   const isCurrentMonth = day.getMonth() === opCurrentMonth
+                  const opExpanded = opExpandedDay === dayStr
                   return (
-                    <div key={i} className={`min-h-[90px] border-b border-r border-gray-700 p-1.5 ${!isCurrentMonth ? 'bg-gray-800/50' : ''} ${isToday ? 'bg-blue-900/10' : ''}`}>
+                    <div key={i} onClick={() => dayLogs.length > 3 && setOpExpandedDay(opExpanded ? null : dayStr)}
+                      className={`min-h-[90px] border-b border-r border-gray-700 p-1.5 ${dayLogs.length > 3 ? 'cursor-pointer' : ''} ${!isCurrentMonth ? 'bg-gray-800/50' : ''} ${isToday ? 'bg-blue-900/10' : ''} ${opExpanded ? 'bg-gray-700/40' : ''}`}>
                       <div className="flex items-center justify-between mb-1">
                         <span className={`text-xs ${isToday ? 'text-blue-400 font-bold' : isCurrentMonth ? 'text-gray-400' : 'text-gray-600'}`}>{day.getDate()}</span>
                         {dayLogs.length > 0 && <span className="text-[10px] text-blue-400">{dayLogs.length}筆</span>}
                       </div>
                       <div className="space-y-0.5">
-                        {dayLogs.slice(0, 3).map(log => (
-                          <div key={log.id} className="bg-gray-700/80 rounded px-1 py-0.5 text-[10px] text-gray-300 truncate cursor-pointer hover:bg-gray-600" onClick={() => handleOpClick(log)}>
+                        {(opExpanded ? dayLogs : dayLogs.slice(0, 3)).map(log => (
+                          <div key={log.id} className={`bg-gray-700/80 rounded px-1 py-0.5 text-[10px] text-gray-300 ${opExpanded ? '' : 'truncate'} cursor-pointer hover:bg-gray-600`} onClick={e => { e.stopPropagation(); handleOpClick(log) }}>
                             {parsePlatforms(log.platform).map(p => <span key={p} className={`${opPlatformColors[p]} text-white px-1 rounded text-[8px] mr-0.5`}>{opPlatformLabels[p]}</span>)}
                             <span className="text-blue-400">{log.client_name}</span> {log.description}
                           </div>
                         ))}
-                        {dayLogs.length > 3 && <p className="text-[10px] text-gray-500 text-center">+{dayLogs.length - 3} 更多</p>}
+                        {dayLogs.length > 3 && (
+                          <button type="button" onClick={e => { e.stopPropagation(); setOpExpandedDay(opExpanded ? null : dayStr) }}
+                            className="w-full text-[10px] text-blue-400 hover:text-blue-300 text-center py-0.5">
+                            {opExpanded ? '收合 ▲' : `點開看全部 ▼（還有 ${dayLogs.length - 3} 筆）`}
+                          </button>
+                        )}
                       </div>
                     </div>
                   )
@@ -924,10 +938,12 @@ export default function Tasks() {
               const doneCount = dayTasks.filter(t => t.status === 'done').length
               const pendingCount = dayTasks.length - doneCount
               const isWeekend = day.getDay() === 0 || day.getDay() === 6
+              const isExpanded = expandedDay === formatDate(day)
               return (
-                <div key={i} className={`min-h-[100px] border-b border-r border-gray-700 p-1.5 ${
+                <div key={i} onClick={() => dayTasks.length > 3 && setExpandedDay(isExpanded ? null : formatDate(day))}
+                  className={`min-h-[100px] border-b border-r border-gray-700 p-1.5 ${dayTasks.length > 3 ? 'cursor-pointer' : ''} ${
                   !isCurrentMonth ? 'bg-gray-800/50' : ''
-                } ${isToday ? 'bg-blue-900/10' : ''} ${isWeekend ? 'bg-gray-800/30' : ''}`}>
+                } ${isToday ? 'bg-blue-900/10' : ''} ${isWeekend ? 'bg-gray-800/30' : ''} ${isExpanded ? 'bg-gray-700/40' : ''}`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-xs font-medium ${
                       isToday ? 'bg-blue-600 text-white px-1.5 py-0.5 rounded-full'
@@ -942,12 +958,15 @@ export default function Tasks() {
                       </span>
                     )}
                   </div>
-                  <div className="space-y-1">
-                    {dayTasks.slice(0, 3).map(task => (
+                  <div className="space-y-1" onClick={e => e.stopPropagation()}>
+                    {(isExpanded ? dayTasks : dayTasks.slice(0, 3)).map(task => (
                       <TaskCard key={task.id} task={task} compact={true} />
                     ))}
                     {dayTasks.length > 3 && (
-                      <p className="text-[10px] text-gray-500 text-center">+{dayTasks.length - 3} 更多</p>
+                      <button type="button" onClick={() => setExpandedDay(isExpanded ? null : formatDate(day))}
+                        className="w-full text-[10px] text-blue-400 hover:text-blue-300 text-center py-0.5">
+                        {isExpanded ? '收合 ▲' : `點開看全部 ▼（還有 ${dayTasks.length - 3} 筆）`}
+                      </button>
                     )}
                   </div>
                 </div>
