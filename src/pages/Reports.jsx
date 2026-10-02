@@ -23,7 +23,7 @@ export default function Reports() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="text-gray-400">載入中...</div></div>
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-8">
         <h1 className="text-2xl font-bold text-white">📊 報告列表</h1>
         <Link to="/reports/new" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">➕ 建立報告</Link>
       </div>

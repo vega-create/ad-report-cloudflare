@@ -54,7 +54,7 @@ export default function ReportDetail() {
   if (!report) return <div className="text-center py-12"><div className="text-5xl mb-4">😕</div><h2 className="text-xl text-white mb-2">找不到報告</h2><Link to="/reports" className="text-blue-400">返回報告列表</Link></div>
   return (
     <div>
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white mb-2">📊 {report.clients?.name || '未知客戶'} 廣告報告</h1>
           <div className="flex items-center gap-4 text-gray-400 text-sm">
@@ -62,7 +62,7 @@ export default function ReportDetail() {
             <span className={`px-3 py-1 rounded-full ${report.status === 'published' ? 'bg-green-900 text-green-300' : 'bg-yellow-900 text-yellow-300'}`}>{report.status === 'published' ? '已發布' : '草稿'}</span>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2">
           <button onClick={async () => { setDownloading(true); try { await downloadPdf(contentRef.current, `${report.clients?.name || '廣告'}_成效報告.pdf`) } finally { setDownloading(false) } }} disabled={downloading} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 no-print">{downloading ? '下載中...' : '📥 下載 PDF'}</button>
           <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/r/${id}`); alert('已複製報告連結！') }} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">🔗 複製連結</button>
           {report.status !== 'published' && <button onClick={publishReport} disabled={publishing} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">{publishing ? '發布中...' : '✅ 發布報告'}</button>}
@@ -70,7 +70,7 @@ export default function ReportDetail() {
           <Link to={`/reports/${id}/edit`} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">✏️ 編輯</Link>
         </div>
       </div>
-      <div ref={contentRef} className="bg-white rounded-xl border border-gray-300 p-8 public-report">
+      <div ref={contentRef} className="bg-white rounded-xl border border-gray-300 p-4 sm:p-8 public-report">
         <div className="markdown-content"><ReactMarkdown remarkPlugins={[remarkGfm]}>{report.data_analysis || '（無內容）'}</ReactMarkdown></div>
       </div>
       <div className="mt-6 flex justify-between">

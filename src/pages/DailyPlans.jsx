@@ -181,7 +181,7 @@ export default function DailyPlans() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <h1 className="text-2xl font-bold text-white">每日計畫</h1>
         <button onClick={() => { setShowAdd(true); setAddDate(todayStr) }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">+ 新增計畫</button>
       </div>
@@ -227,7 +227,7 @@ export default function DailyPlans() {
         ) : (
           <>
             <button onClick={() => { if(viewMode==='week') setWeekOffset(p=>p-1); else setMonthDate(d=>{const n=new Date(d);n.setMonth(n.getMonth()-1);return n}) }} className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">◀</button>
-            <span className="text-white font-medium min-w-[160px] text-center">{dateLabel}</span>
+            <span className="text-white font-medium min-w-[120px] sm:min-w-[160px] text-center text-sm sm:text-base">{dateLabel}</span>
             <button onClick={() => { if(viewMode==='week') setWeekOffset(p=>p+1); else setMonthDate(d=>{const n=new Date(d);n.setMonth(n.getMonth()+1);return n}) }} className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">▶</button>
             <button onClick={() => { setWeekOffset(0); setMonthDate(new Date()) }} className="bg-gray-700 text-gray-300 px-3 py-1 rounded-lg hover:bg-gray-600 text-sm">今天</button>
           </>
@@ -244,7 +244,7 @@ export default function DailyPlans() {
       {tab === 'calendar' && !loading && (
         viewMode === 'week' ? (
           /* 週檢視 7 天 */
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
             {weekDays.map((day, di) => {
               const ds = fmt(day), dayP = plans.filter(p => p.plan_date === ds)
               const isToday = ds === todayStr, doneCnt = dayP.filter(p => p.is_done).length
@@ -266,7 +266,8 @@ export default function DailyPlans() {
           </div>
         ) : viewMode === 'month' ? (
           /* 月檢視 */
-          <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-x-auto">
+            <div className="min-w-[640px]">
             <div className="grid grid-cols-7 border-b border-gray-700">
               {dayNames.map(n => <div key={n} className="px-2 py-2 text-center text-xs font-semibold text-gray-400">{n}</div>)}
             </div>
@@ -297,6 +298,7 @@ export default function DailyPlans() {
                   </div>
                 )
               })}
+            </div>
             </div>
           </div>
         ) : (

@@ -86,7 +86,7 @@ export default function AgentTasks() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <h1 className="text-2xl font-bold text-white">任務管理</h1>
         <button
           onClick={() => { setShowForm(!showForm); setEditingId(null) }}

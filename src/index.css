@@ -39,3 +39,11 @@ body {
   }
   .no-print, .no-print * { display: none !important; visibility: hidden !important; }
 }
+
+/* 手機：Markdown 表格可橫向捲動、長網址換行、提案/報告頁不撐爆 */
+@media (max-width: 640px) {
+  .markdown-content { overflow-wrap: anywhere; font-size: 15px; }
+  .markdown-content table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .markdown-content th, .markdown-content td { padding: 8px 10px; white-space: nowrap; }
+  .markdown-content h2 { font-size: 1.25rem; }
+}

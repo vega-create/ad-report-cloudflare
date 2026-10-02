@@ -120,7 +120,7 @@ export default function NewReport() {
 
   return (
     <div className="max-w-6xl">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <h1 className="text-2xl font-bold text-white">➕ 建立新報告</h1>
         <div className="flex gap-3">
           <button onClick={() => setShowPreview(!showPreview)} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">

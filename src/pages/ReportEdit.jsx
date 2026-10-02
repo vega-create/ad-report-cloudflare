@@ -32,7 +32,7 @@ export default function ReportEdit() {
   if (!report) return <div className="text-center py-12"><Link to="/reports" className="text-blue-400">返回報告列表</Link></div>
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <h1 className="text-2xl font-bold text-white">✏️ 編輯報告 - {report.clients?.name}</h1>
         <div className="flex gap-3">
           <button onClick={() => setShowPreview(!showPreview)} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">{showPreview ? '📝 編輯' : '👁️ 預覽'}</button>

@@ -502,9 +502,9 @@ export default function Tasks() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <h1 className="text-2xl font-bold text-white">廣告任務</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => { setShowQuickAdd(true); setQuickClient(''); setQuickDate(formatDate(new Date())) }}
             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
@@ -550,7 +550,7 @@ export default function Tasks() {
             ) : (
               <>
                 <button onClick={() => { if (opViewMode === 'week') setOpWeekOffset(p => p - 1); else setOpMonthDate(d => { const n = new Date(d); n.setMonth(n.getMonth() - 1); return n }) }} className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">◀</button>
-                <span className="text-white font-medium min-w-[160px] text-center">{opDateLabel}</span>
+                <span className="text-white font-medium min-w-[120px] sm:min-w-[160px] text-center text-sm sm:text-base">{opDateLabel}</span>
                 <button onClick={() => { if (opViewMode === 'week') setOpWeekOffset(p => p + 1); else setOpMonthDate(d => { const n = new Date(d); n.setMonth(n.getMonth() + 1); return n }) }} className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">▶</button>
                 <button onClick={() => { setOpWeekOffset(0); setOpMonthDate(new Date()) }} className="bg-gray-700 text-gray-300 px-3 py-1 rounded-lg hover:bg-gray-600 text-sm">今天</button>
               </>
@@ -595,7 +595,7 @@ export default function Tasks() {
             </div>)
           ) :
           opViewMode === 'week' ? (
-            <div ref={exportRef} className="grid grid-cols-5 gap-3">
+            <div ref={exportRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               {opWeekDays.map((day, di) => {
                 const dayStr = formatDate(day)
                 const dayLogs = opLogs.filter(l => l.operation_date === dayStr)
@@ -626,7 +626,8 @@ export default function Tasks() {
             </div>
           ) : (
             /* 月曆 */
-            <div ref={exportRef} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+            <div ref={exportRef} className="bg-gray-800 rounded-xl border border-gray-700 overflow-x-auto">
+              <div className="min-w-[640px]">
               <div className="grid grid-cols-7 border-b border-gray-700">
                 {['一', '二', '三', '四', '五', '六', '日'].map(name => (
                   <div key={name} className="px-2 py-2 text-center text-xs font-semibold text-gray-400">{name}</div>
@@ -663,6 +664,7 @@ export default function Tasks() {
                     </div>
                   )
                 })}
+              </div>
               </div>
             </div>
           )}
@@ -756,7 +758,7 @@ export default function Tasks() {
       {activeTab === 'schedule' && <>
 
       {/* 統計摘要 */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 text-center">
           <p className="text-2xl font-bold text-white">{totalTasks}</p>
           <p className="text-xs text-gray-400">總任務</p>
@@ -858,7 +860,7 @@ export default function Tasks() {
 
         <button onClick={handlePrev}
           className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">◀</button>
-        <span className="text-white font-medium min-w-[140px] text-center">{dateLabel}</span>
+        <span className="text-white font-medium min-w-[120px] sm:min-w-[140px] text-center text-sm sm:text-base">{dateLabel}</span>
         <button onClick={handleNext}
           className="bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600">▶</button>
         <button onClick={handleToday}
@@ -883,7 +885,7 @@ export default function Tasks() {
         <div className="text-center py-10 text-gray-400">載入中...</div>
       ) : viewMode === 'week' ? (
         /* ========== 週檢視 ========== */
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {weekDays.map((day, di) => {
             const dayTasks = getTasksForDay(day)
             const totalMin = getDayTotal(day)
@@ -920,7 +922,8 @@ export default function Tasks() {
         </div>
       ) : (
         /* ========== 月檢視 ========== */
-        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-x-auto">
+          <div className="min-w-[640px]">
           {/* 星期標頭 */}
           <div className="grid grid-cols-7 border-b border-gray-700">
             {monthDayNames.map(name => (
@@ -972,6 +975,7 @@ export default function Tasks() {
                 </div>
               )
             })}
+          </div>
           </div>
         </div>
       )}

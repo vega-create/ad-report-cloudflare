@@ -1,7 +1,10 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 
 export default function Layout() {
   const location = useLocation()
+  const [open, setOpen] = useState(false)
+  useEffect(() => { setOpen(false) }, [location.pathname]) // 換頁自動收起
   const navGroups = [
     { label: '總覽', items: [
       { path: '/', label: '首頁', icon: '🏠' },
@@ -25,7 +28,15 @@ export default function Layout() {
   ]
   return (
     <div className="min-h-screen bg-gray-900 flex">
-      <aside className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
+      {/* 手機頂欄 */}
+      <header className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4">
+        <span className="text-white font-bold">📈 AdReport</span>
+        <button type="button" onClick={() => setOpen(o => !o)} aria-label="選單"
+          className="text-gray-200 text-2xl leading-none px-2 py-1 rounded hover:bg-gray-700">{open ? '✕' : '☰'}</button>
+      </header>
+      {/* 手機遮罩 */}
+      {open && <div className="md:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setOpen(false)} />}
+      <aside className={`w-64 bg-gray-800 border-r border-gray-700 flex flex-col fixed md:static inset-y-0 left-0 z-50 transform transition-transform md:transform-none ${open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="p-6 border-b border-gray-700">
           <h1 className="text-xl font-bold text-white">📈 AdReport</h1>
           <p className="text-sm text-gray-400 mt-1">廣告報告系統</p>
@@ -58,8 +69,8 @@ export default function Layout() {
           <p className="text-xs text-gray-500 text-center">v1.0.0 · Made with ❤️</p>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto">
-        <div className="p-8"><Outlet /></div>
+      <main className="flex-1 overflow-auto min-w-0 pt-14 md:pt-0">
+        <div className="p-4 sm:p-6 md:p-8"><Outlet /></div>
       </main>
     </div>
   )
