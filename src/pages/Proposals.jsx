@@ -1,24 +1,22 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 export default function Proposals() {
   const [proposals, setProposals] = useState([])
   const [loading, setLoading] = useState(true)
   useEffect(() => { fetchProposals() }, [])
   const fetchProposals = async () => {
     try {
-      const { data, error } = await supabase.from('proposals').select('*, clients(name)').order('created_at', { ascending: false })
-      if (error) throw error
+      const data = await api.proposals.list({ order: '-created_at' })
       setProposals(data || [])
     } catch (error) { console.error(error) } finally { setLoading(false) }
   }
   const deleteProposal = async (id) => {
     if (!confirm('確定要刪除這份提案嗎？')) return
     try {
-      const { error } = await supabase.from('proposals').delete().eq('id', id)
-      if (error) throw error
+      await api.proposals.remove(id)
       setProposals(proposals.filter(p => p.id !== id))
-    } catch (error) { alert('刪除失敗') }
+    } catch (error) { alert('刪除失敗：' + error.message) }
   }
   if (loading) return <div className="flex items-center justify-center h-64"><div className="text-gray-400">載入中...</div></div>
   return (

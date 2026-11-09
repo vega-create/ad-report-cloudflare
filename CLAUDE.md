@@ -1,84 +1,104 @@
 # Ad Report System — 廣告報告系統
 
-> Markdown 廣告報告編輯器，支援 LINE 推送
-> 部署於 Cloudflare Pages
+> Markdown 廣告報告編輯器 ＋ 廣告任務排程 ＋ 操作記錄，支援 LINE 推送
+> 部署於 Cloudflare Pages；資料在 Cloudflare D1（2026-11 從 Supabase 搬來）
 
 ## 技術棧
 
-- **前端**：React 18.2 + Vite 5.0（SPA，JSX 無 TypeScript）
-- **後端**：Cloudflare Pages Functions
-- **資料庫**：Supabase (PostgreSQL)
+- **前端**：React 18.2 + Vite 5.0（SPA，JSX）
+- **後端**：Cloudflare Pages Functions（`functions/`），前端只透過 `/api/*` 存取資料，瀏覽器不直連資料庫
+- **資料庫**：Cloudflare D1 `adreport`（binding `DB`，schema 在 `migrations/d1/`）
+- **圖片**：Cloudflare R2 `adreport-ads`（binding `BUCKET`），由 `/img/<key>` 回傳
+- **登入**：Cloudflare Access（網頁）；`/api/*` 由 Functions 再驗 Access JWT（header 或 `CF_Authorization` cookie，驗 AUD）或程式用的 `Bearer API_TOKEN`；`/api/public/*` 與 `/img/*` 不需登入
 - **通知**：LINE Messaging API
-- **樣式**：Tailwind CSS 3.4
-- **路由**：React Router v6
+- **樣式**：Tailwind CSS 3.4；**路由**：React Router v6
+- **MCP**：`~/adreport-mcp`（Cloudflare Worker）直接綁同一顆 D1，給 Claude 讀寫
 
-## 核心功能
+## 本機開發
 
-1. **客戶管理**：建立客戶資料 + LINE 群組 ID
-2. **Markdown 報告編輯**：直接輸入或貼上 Markdown 內容，即時預覽
-3. **報告管理**：草稿 / 已發布狀態管理
-4. **公開報告頁**：`/r/{id}` 可分享給客戶
-5. **LINE 推送**：一鍵推送報告連結到客戶 LINE 群組
+```bash
+npm install
+npm run db:migrate:local      # 建本機 D1 schema（.wrangler/state）
+node scripts/migrate-from-supabase.mjs ~/adreport-migration --apply local   # 灌資料（key 放 .env.local）
+npm run dev:pages             # build + wrangler pages dev dist（http://localhost:8788，localhost 不驗 Access）
+```
+`.dev.vars`（gitignore）放 `OPENAI_API_KEY`、`LINE_CHANNEL_ACCESS_TOKEN`。
 
-## 資料庫
+## 資料表（D1）
 
 | 表格 | 說明 |
 |------|------|
 | `clients` | 客戶（name, industry, line_group_id, notes） |
-| `reports` | 報告（client_id, data_analysis[markdown], report_date, status） |
+| `reports` | 報告（client_id, data_analysis[markdown], report_date, status, ai_draft, source） |
+| `proposals` | 提案（client_id 可空, title, content, status） |
+| `report_feedback` | MCP 學習 Vega 修改偏好／口述背景／客戶回饋／規劃 |
+| `ad_tasks` | 廣告任務排程（client_name, task, scheduled_date/time, priority, status, outcome_note, include_in_next_report） |
+| `ad_operation_logs` | 廣告操作記錄（client_name, operation_date, platform, description, include_in_report） |
+| `ad_quick_logs` | 快速記錄（spend_summary JSON） |
+| `daily_plans` | 每日計畫 |
+| `agent_employees` / `agent_tasks` / `agent_task_records` / `agent_customer_messages` | 智慧媽咪 LINE bot 的員工／任務／客戶訊息（bot 是主要寫入者；若 bot 搬到自己的 D1，Pages 綁 `AGENT_DB` 即可改讀那邊） |
 
-## API 路由（Cloudflare Functions）
+布林存 0/1、JSON 存字串，`functions/_lib/db.js` 讀寫時自動轉換；id 為 UUID。
+
+## API 路由（Pages Functions，全部走 D1）
 
 | 路由 | 說明 |
 |------|------|
-| `POST /api/send-line` | 推送報告連結到 LINE 群組 |
+| `GET/POST /api/clients`、`GET/PATCH/DELETE /api/clients/:id` | 客戶 |
+| `GET/POST /api/reports`、`GET/PATCH/DELETE /api/reports/:id` | 報告（附 `clients`） |
+| `GET/POST /api/proposals`、`GET/PATCH/DELETE /api/proposals/:id` | 提案 |
+| `GET/POST /api/feedback` | 報告修正／回饋記錄 |
+| `GET/POST/PATCH /api/tasks`、`GET/PATCH/DELETE /api/tasks/:id` | 廣告任務（PATCH 集合 = `{ids, patch}` 批次） |
+| `GET/POST/PATCH /api/operation-logs`、`GET/PATCH/DELETE /api/operation-logs/:id` | 操作記錄 |
+| `GET/POST /api/quick-logs` | 快速記錄 |
+| `GET/POST /api/plans`、`PATCH/DELETE /api/plans/:id` | 每日計畫 |
+| `GET /api/client-names?sources=clients,tasks,logs` | 下拉用客戶名稱 |
+| `GET /api/dashboard` | 首頁統計 |
+| `GET /api/agent/stats`、`/api/agent/employees`、`/api/agent/tasks[/:id]`、`/api/agent/messages[/:id]`、`/api/agent/messages/groups` | 智慧媽咪頁面 |
+| `GET /api/public/reports/:id`、`GET /api/public/proposals/:id` | 客戶看的公開頁（不需登入） |
+| `POST /api/parse-tasks`、`POST /api/parse-quick-log` | OpenAI 解析 MD（原有） |
+| `POST /api/send-line` | 推送到 LINE 群組（原有） |
+| `GET /img/<key>` | R2 圖片 |
+
+前端呼叫一律經 `src/lib/api.ts`。
 
 ## 頁面路由
 
 | 路由 | 說明 |
 |------|------|
-| `/` | Dashboard — 統計數字 + 最近報告 |
-| `/clients` | 客戶列表 |
-| `/clients/new` | 新增客戶 |
-| `/clients/:id/edit` | 編輯客戶 |
-| `/reports` | 報告列表 |
-| `/reports/new` | 新增報告（Markdown 編輯器 + 即時預覽） |
-| `/reports/:id` | 查看報告 + 發佈 + LINE 推送 |
-| `/reports/:id/edit` | 編輯報告 Markdown |
-| `/r/:id` | 公開報告頁（給客戶看） |
+| `/` | Dashboard |
+| `/clients`、`/clients/new`、`/clients/:id/edit` | 客戶 |
+| `/reports`、`/reports/new`、`/reports/:id`、`/reports/:id/edit` | 報告 |
+| `/proposals`… | 提案 |
+| `/tasks` | 廣告任務（操作記錄 / 排程任務，解析 MD 排程） |
+| `/quick-logs`、`/operation-logs`、`/daily-plans` | 快速記錄、操作記錄、每日計畫 |
+| `/agent`、`/agent/messages`、`/agent/tasks` | 智慧媽咪 |
+| `/guide`、`/architecture` | 使用說明、系統架構 |
+| `/r/:id`、`/p/:id` | 公開報告／提案頁（給客戶看） |
 
 ## 目錄結構
 
 ```
-src/
-├── App.jsx                    # 路由設定
-├── lib/supabase.js            # Supabase 客戶端
-├── components/
-│   └── Layout.jsx             # 側邊欄導航
-└── pages/
-    ├── Dashboard.jsx          # 儀表板
-    ├── Clients.jsx            # 客戶管理
-    ├── Reports.jsx            # 報告列表
-    ├── NewReport.jsx          # 新增報告（Markdown 編輯器）
-    ├── ReportDetail.jsx       # 報告詳情
-    ├── ReportEdit.jsx         # Markdown 編輯
-    └── PublicReport.jsx       # 公開報告頁
-
 functions/
-└── api/
-    └── send-line.js           # LINE 推送（Cloudflare Function）
+├── _lib/            # db.js（D1 存取）、auth.js（Access JWT / API token）、joins.js、http.js、agent.js
+├── api/
+│   ├── _middleware.js   # /api/* 驗身分（/api/public/* 例外）
+│   ├── clients/ reports/ proposals/ feedback/ tasks/ operation-logs/ quick-logs/ plans/ agent/ public/
+│   ├── client-names.js dashboard.js
+│   └── parse-tasks.js parse-quick-log.js send-line.js
+└── img/[[key]].js   # R2 圖片
+migrations/d1/0001_init.sql
+scripts/migrate-from-supabase.mjs   # Supabase → D1/R2 搬運＋核對
+scripts/backup-db.mjs               # D1 備份（.github/workflows/backup.yml 每週跑）
+src/lib/api.ts                      # 前端唯一資料入口
 ```
 
-## 環境變數
+## 環境變數 / Secret
 
-```
-VITE_SUPABASE_URL=https://...supabase.co
-VITE_SUPABASE_ANON_KEY=...
-LINE_CHANNEL_ACCESS_TOKEN=...
-```
+- `wrangler.toml`：D1 / R2 binding、`ACCESS_TEAM_DOMAIN`
+- Pages Secret：`ACCESS_AUD`、`API_TOKEN`、`OPENAI_API_KEY`、`LINE_CHANNEL_ACCESS_TOKEN`
+- GitHub Secret：`CLOUDFLARE_API_TOKEN`（部署＋每週備份）、`CLOUDFLARE_ACCOUNT_ID`
 
-## Cloudflare Pages 部署設定
+## 部署
 
-- Build command: `npm run build`
-- Build output directory: `dist`
-- 環境變數需在 Cloudflare Pages Settings > Environment variables 設定
+GitHub Actions（`.github/workflows/deploy.yml`）push main → `npm run build` → `wrangler pages deploy dist`（binding 依 `wrangler.toml`）。

@@ -1,0 +1,27 @@
+# Cloudflare Pages 設定（ad-report-cloudflare）
+# - 本機：npm run dev:pages（wrangler pages dev，含 D1 / R2 本機模擬）
+# - 部署：GitHub Actions 跑 `wrangler pages deploy dist`，會依此檔套用 binding。
+#   注意：有了這個檔之後，Pages 後台「Bindings / 環境變數」改由此檔管理；
+#   Secret（加密變數）仍在後台或用 `wrangler pages secret put <NAME>` 設定：
+#     ACCESS_AUD               Cloudflare Access 應用程式的 AUD tag（Zero Trust → Access → Applications → 該 app → Overview）
+#     API_TOKEN                給 MCP / LINE bot 等程式呼叫 /api 用的 Bearer token（自己產一組長亂數）
+#     OPENAI_API_KEY           解析 MD 排程用（原本就有）
+#     LINE_CHANNEL_ACCESS_TOKEN 推 LINE 用（原本就有）
+name = "ad-report-cloudflare"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-03-25"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# Access 團隊網域（驗 JWT 的 issuer / JWKS 來源）；不是 secret
+ACCESS_TEAM_DOMAIN = "lingering-cherry-4e64.cloudflareaccess.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "adreport"
+database_id = "04dbb20a-0f0d-4dcf-9887-a85797841e38"
+migrations_dir = "migrations/d1"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "adreport-ads"

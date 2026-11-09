@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { supabaseAgent as supabase } from '../lib/supabase-agent'
-import { supabase as supabaseAd } from '../lib/supabase'
+import { api } from '../lib/api'
 import { downloadPdf } from '../lib/pdf'
 
 function getMonday(d) {
@@ -131,27 +130,18 @@ export default function Tasks() {
 
   async function loadTasks() {
     setLoading(true)
-    let query = supabase
-      .from('ad_tasks')
-      .select('*')
-      .gte('scheduled_date', queryStart)
-      .lte('scheduled_date', queryEnd)
-      .order('scheduled_date')
-      .order('scheduled_time')
+    const params = { date_from: queryStart, date_to: queryEnd, order: 'scheduled_date,scheduled_time' }
+    if (selectedClient !== 'all') params.client_name = selectedClient
+    if (['pending', 'done', 'cancelled'].includes(statusFilter)) params.status = statusFilter
 
-    if (selectedClient !== 'all') query = query.eq('client_name', selectedClient)
-    if (statusFilter === 'pending') query = query.eq('status', 'pending')
-    if (statusFilter === 'done') query = query.eq('status', 'done')
-    if (statusFilter === 'cancelled') query = query.eq('status', 'cancelled')
-
-    const { data } = await query
+    const data = await api.tasks.list(params).catch(() => [])
     setTasks(data || [])
     setLoading(false)
   }
 
   async function loadClients() {
-    const { data } = await supabaseAd.from('clients').select('name').order('name')
-    setClients((data || []).map(c => c.name))
+    const names = await api.clientNames(['clients']).catch(() => [])
+    setClients(names)
   }
 
   useEffect(() => { loadClients() }, [])
@@ -181,15 +171,10 @@ export default function Tasks() {
     try {
       // 所有客戶未來 30 天已排的工時 → 讓排程避開已滿的日子（每天上限 120 分鐘）
       const loadStart = formatDate(new Date()); const loadEndD = new Date(); loadEndD.setDate(loadEndD.getDate() + 30)
-      const { data: pend } = await supabase.from('ad_tasks').select('scheduled_date, estimated_minutes').eq('status', 'pending').gte('scheduled_date', loadStart).lte('scheduled_date', formatDate(loadEndD))
+      const pend = await api.tasks.list({ status: 'pending', date_from: loadStart, date_to: formatDate(loadEndD) }).catch(() => [])
       const loadMap = {}; (pend || []).forEach(t => { loadMap[t.scheduled_date] = (loadMap[t.scheduled_date] || 0) + (t.estimated_minutes || 0) })
       const existing_load = Object.entries(loadMap).map(([date, minutes]) => ({ date, minutes }))
-      const res = await fetch('/api/parse-tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markdown, client_name: clientName, report_date: reportDate, existing_load }),
-      })
-      const data = await res.json()
+      const data = await api.parseTasks({ markdown, client_name: clientName, report_date: reportDate, existing_load })
       if (data.tasks) {
         setParsedTasks(data.tasks)
         setShowConfirm(true)
@@ -217,7 +202,7 @@ export default function Tasks() {
         scheduled_time: t.scheduled_time,
         status: 'pending',
       }))
-      await supabase.from('ad_tasks').insert(rows)
+      await api.tasks.create(rows)
       setParsedTasks([])
       setShowConfirm(false)
       setShowParser(false)
@@ -244,7 +229,7 @@ export default function Tasks() {
         status: 'pending',
         outcome_note: quickNote || null,
       }
-      await supabase.from('ad_tasks').insert([row])
+      await api.tasks.create([row])
       setShowQuickAdd(false)
       setQuickTask('')
       setQuickNote('')
@@ -257,12 +242,12 @@ export default function Tasks() {
     if (taskSaving) return
     setTaskSaving(true)
     try {
-      await supabase.from('ad_tasks').update({
+      await api.tasks.update(taskId, {
         status: 'done',
         completed_at: new Date().toISOString(),
         outcome_note: outcomeNote || null,
         include_in_next_report: outcomeNote ? true : false,
-      }).eq('id', taskId)
+      })
       setCompletingTask(null)
       setOutcomeNote('')
       loadTasks()
@@ -274,7 +259,7 @@ export default function Tasks() {
     if (taskSaving) return
     setTaskSaving(true)
     try {
-      await supabase.from('ad_tasks').update({ status: 'cancelled' }).eq('id', taskId)
+      await api.tasks.update(taskId, { status: 'cancelled' })
       setCompletingTask(null)
       setOutcomeNote('')
       loadTasks()
@@ -291,7 +276,7 @@ export default function Tasks() {
       const date = new Date(task.scheduled_date)
       date.setDate(date.getDate() + 1)
       const newDate = formatDate(date)
-      await supabase.from('ad_tasks').update({ scheduled_date: newDate }).eq('id', taskId)
+      await api.tasks.update(taskId, { scheduled_date: newDate })
       setCompletingTask(null)
       setOutcomeNote('')
       loadTasks()
@@ -300,7 +285,7 @@ export default function Tasks() {
 
   // 修改任務日期
   async function handleReschedule(taskId, newDate) {
-    await supabase.from('ad_tasks').update({ scheduled_date: newDate }).eq('id', taskId)
+    await api.tasks.update(taskId, { scheduled_date: newDate })
     setCompletingTask(null)
     setOutcomeNote('')
     loadTasks()
@@ -401,24 +386,17 @@ export default function Tasks() {
   }, [activeTab, opFilterClient, opWeekOffset, opViewMode, opMonthDate, opCustomStart, opCustomEnd])
 
   async function fetchOpClients() {
-    const { data: d1 } = await supabase.from('ad_operation_logs').select('client_name')
-    const { data: d2 } = await supabase.from('ad_tasks').select('client_name')
-    const { data: d3 } = await supabaseAd.from('clients').select('name')
-    const all = [
-      ...(d1 || []).map(c => c.client_name),
-      ...(d2 || []).map(c => c.client_name),
-      ...(d3 || []).map(c => c.name),
-    ]
-    setOpClients([...new Set(all)].filter(Boolean).sort())
+    // clients 表 ＋ 出現在操作記錄／任務裡的名稱，去重排序
+    const all = await api.clientNames(['clients', 'tasks', 'logs']).catch(() => [])
+    setOpClients(all)
   }
 
   async function fetchOpLogs() {
     setOpLoading(true)
-    let query = supabase.from('ad_operation_logs').select('*')
-      .gte('operation_date', opQueryStart).lte('operation_date', opQueryEnd)
-      .order('operation_date').order('created_at')
-    if (opFilterClient) query = query.eq('client_name', opFilterClient)
-    const { data } = await query
+    const data = await api.operationLogs.list({
+      date_from: opQueryStart, date_to: opQueryEnd, order: 'operation_date,created_at',
+      client_name: opFilterClient || undefined,
+    }).catch(() => [])
     setOpLogs(data || [])
     setOpLoading(false)
   }
@@ -427,7 +405,7 @@ export default function Tasks() {
     if (!newOp.client_name || !newOp.description || opSaving) return
     setOpSaving(true)
     try {
-      await supabase.from('ad_operation_logs').insert({
+      await api.operationLogs.create({
         client_name: newOp.client_name, operation_date: newOp.date,
         platform: newOp.platforms.length > 0 ? newOp.platforms.join(',') : null,
         description: newOp.description, raw_message: `(from web) ${newOp.description}`,
@@ -453,10 +431,10 @@ export default function Tasks() {
     if (!editingOp || !editForm.description || opSaving) return
     setOpSaving(true)
     try {
-      await supabase.from('ad_operation_logs').update({
+      await api.operationLogs.update(editingOp.id, {
         client_name: editForm.client_name, platform: editForm.platforms.length > 0 ? editForm.platforms.join(',') : null,
         description: editForm.description, operation_date: editForm.date,
-      }).eq('id', editingOp.id)
+      })
       setEditingOp(null)
       fetchOpLogs()
     } finally { setOpSaving(false) }
@@ -466,7 +444,7 @@ export default function Tasks() {
     if (!confirm('確定要刪除？') || opSaving) return
     setOpSaving(true)
     try {
-      await supabase.from('ad_operation_logs').delete().eq('id', id)
+      await api.operationLogs.remove(id)
       setEditingOp(null)
       fetchOpLogs()
     } finally { setOpSaving(false) }

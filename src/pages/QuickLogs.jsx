@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabaseAgent as supabase } from '../lib/supabase-agent'
-import { supabase as supabaseAd } from '../lib/supabase'
+import { api } from '../lib/api'
 
 const priorityEmoji = { red: '🔴', yellow: '🟡', green: '🟢' }
 const categoryLabel = { facebook: 'FB', google: 'Google', client: '客戶', keyword: '關鍵字' }
@@ -41,24 +40,17 @@ export default function QuickLogs() {
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - parseInt(dateFilter))
 
-    let query = supabase
-      .from('ad_quick_logs')
-      .select('*')
-      .gte('created_at', startDate.toISOString())
-      .order('created_at', { ascending: false })
-
-    if (clientFilter !== 'all') {
-      query = query.eq('client_name', clientFilter)
-    }
-
-    const { data } = await query
+    const data = await api.quickLogs.list({
+      created_after: startDate.toISOString(), order: '-created_at',
+      client_name: clientFilter !== 'all' ? clientFilter : undefined,
+    }).catch(() => [])
     setLogs(data || [])
     setLoading(false)
   }
 
   async function loadClients() {
-    const { data } = await supabaseAd.from('clients').select('name').order('name')
-    setClients((data || []).map(c => c.name))
+    const names = await api.clientNames(['clients']).catch(() => [])
+    setClients(names)
   }
 
   useEffect(() => { loadClients() }, [])
@@ -69,12 +61,7 @@ export default function QuickLogs() {
     if (!markdown.trim()) return
     setIsParsing(true)
     try {
-      const res = await fetch('/api/parse-quick-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markdown }),
-      })
-      const data = await res.json()
+      const data = await api.parseQuickLog({ markdown })
       if (data.error) {
         alert('解析失敗：' + data.error)
       } else {
@@ -100,15 +87,8 @@ export default function QuickLogs() {
         raw_markdown: markdown,
       }
 
-      // 嘗試找到 client_id
-      const { data: clientData } = await supabaseAd
-        .from('clients')
-        .select('id')
-        .eq('name', parsedResult.client_name)
-        .single()
-      if (clientData) logRow.client_id = clientData.id
-
-      await supabase.from('ad_quick_logs').insert([logRow])
+      // client_id 由 API 依 client_name 自動對到 clients 表
+      await api.quickLogs.create(logRow)
 
       // 2. 如果有 tasks，存入 ad_tasks
       if (parsedResult.tasks && parsedResult.tasks.length > 0) {
@@ -123,7 +103,7 @@ export default function QuickLogs() {
           scheduled_time: t.scheduled_time,
           status: 'pending',
         }))
-        await supabase.from('ad_tasks').insert(taskRows)
+        await api.tasks.create(taskRows)
       }
 
       // 重置
@@ -169,14 +149,9 @@ export default function QuickLogs() {
       notes: formData.notes || '',
     }
 
-    const { data: clientData } = await supabaseAd
-      .from('clients')
-      .select('id')
-      .eq('name', client_name)
-      .single()
-    if (clientData) logRow.client_id = clientData.id
-
-    await supabase.from('ad_quick_logs').insert([logRow])
+    try {
+      await api.quickLogs.create(logRow)
+    } catch (e) { alert('儲存失敗：' + e.message); return }
 
     setFormData({
       client_name: '', period_start: '', period_end: '',

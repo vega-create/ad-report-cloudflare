@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 export default function ProposalEdit() {
@@ -19,13 +19,12 @@ export default function ProposalEdit() {
     if (!isNew) fetchProposal()
   }, [id])
   const fetchClients = async () => {
-    const { data } = await supabase.from('clients').select('id, name').order('name')
+    const data = await api.clients.list({ order: 'name' }).catch(() => [])
     setClients(data || [])
   }
   const fetchProposal = async () => {
     try {
-      const { data, error } = await supabase.from('proposals').select('*, clients(name)').eq('id', id).single()
-      if (error) throw error
+      const data = await api.proposals.get(id)
       setTitle(data.title || '')
       setClientId(data.client_id || '')
       setContent(data.content || '')
@@ -36,19 +35,13 @@ export default function ProposalEdit() {
     setSaving(true)
     try {
       if (isNew) {
-        const { data, error } = await supabase.from('proposals').insert([{
-          title, client_id: clientId || null, content
-        }]).select().single()
-        if (error) throw error
+        const data = await api.proposals.create({ title, client_id: clientId || null, content })
         navigate(`/proposals/${data.id}`)
       } else {
-        const { error } = await supabase.from('proposals').update({
-          title, client_id: clientId || null, content, updated_at: new Date().toISOString()
-        }).eq('id', id)
-        if (error) throw error
+        await api.proposals.update(id, { title, client_id: clientId || null, content, updated_at: new Date().toISOString() })
         navigate(`/proposals/${id}`)
       }
-    } catch (error) { alert('儲存失敗') } finally { setSaving(false) }
+    } catch (error) { alert('儲存失敗：' + error.message) } finally { setSaving(false) }
   }
   if (loading) return <div className="flex items-center justify-center h-64"><div className="text-gray-400">載入中...</div></div>
   return (

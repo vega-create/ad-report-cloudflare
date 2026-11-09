@@ -96,6 +96,7 @@ export default function Guide() {
         <div className="text-xs text-gray-500 space-y-1">
           <p>⚠️ 存進系統的永遠是「草稿」，沒有你按發布，客戶不會收到。</p>
           <p>⚠️ Claude 桌面 App 若還沒接：設定 → 連接器 → 新增自訂連接器 → 貼 MCP 網址（跟 Claude Code 同一組）。</p>
+          <p>ℹ️ 2026-11 起資料存在 Cloudflare D1（同一顆庫），網頁走 /api、MCP 直接綁 D1，兩邊看到的永遠一致。</p>
         </div>
       </div>
 

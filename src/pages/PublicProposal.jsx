@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { downloadPdf } from '../lib/pdf'
@@ -14,8 +14,7 @@ export default function PublicProposal() {
   useEffect(() => { fetchProposal() }, [id])
   const fetchProposal = async () => {
     try {
-      const { data, error } = await supabase.from('proposals').select('*, clients(name, industry)').eq('id', id).single()
-      if (error) throw error
+      const data = await api.public.proposal(id)
       setProposal(data)
     } catch (error) { setError('找不到提案') } finally { setLoading(false) }
   }

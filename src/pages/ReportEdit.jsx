@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 export default function ReportEdit() {
@@ -14,8 +14,7 @@ export default function ReportEdit() {
   useEffect(() => { fetchReport() }, [id])
   const fetchReport = async () => {
     try {
-      const { data, error } = await supabase.from('reports').select('*, clients(name)').eq('id', id).single()
-      if (error) throw error
+      const data = await api.reports.get(id)
       setReport(data)
       setContent(data.data_analysis || '')
     } catch (error) { console.error(error) } finally { setLoading(false) }
@@ -23,10 +22,9 @@ export default function ReportEdit() {
   const saveReport = async () => {
     setSaving(true)
     try {
-      const { error } = await supabase.from('reports').update({ data_analysis: content }).eq('id', id)
-      if (error) throw error
+      await api.reports.update(id, { data_analysis: content })
       navigate(`/reports/${id}`)
-    } catch (error) { alert('儲存失敗') } finally { setSaving(false) }
+    } catch (error) { alert('儲存失敗：' + error.message) } finally { setSaving(false) }
   }
   if (loading) return <div className="flex items-center justify-center h-64"><div className="text-gray-400">載入中...</div></div>
   if (!report) return <div className="text-center py-12"><Link to="/reports" className="text-blue-400">返回報告列表</Link></div>

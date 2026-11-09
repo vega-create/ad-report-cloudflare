@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { downloadPdf } from '../lib/pdf'
@@ -18,18 +18,16 @@ export default function ReportDetail() {
   useEffect(() => { fetchReport() }, [id])
   const fetchReport = async () => {
     try {
-      const { data, error } = await supabase.from('reports').select('*, clients(*)').eq('id', id).single()
-      if (error) throw error
+      const data = await api.reports.get(id)
       setReport(data)
     } catch (error) { console.error(error) } finally { setLoading(false) }
   }
   const publishReport = async () => {
     setPublishing(true)
     try {
-      const { error } = await supabase.from('reports').update({ status: 'published' }).eq('id', id)
-      if (error) throw error
+      await api.reports.update(id, { status: 'published' })
       setReport(prev => ({ ...prev, status: 'published' }))
-    } catch (error) { alert('發布失敗') } finally { setPublishing(false) }
+    } catch (error) { alert('發布失敗：' + error.message) } finally { setPublishing(false) }
   }
   const openLinePreview = () => {
     if (!report.clients?.line_group_id) { alert('此客戶尚未設定 LINE 群組 ID'); return }
@@ -40,12 +38,7 @@ export default function ReportDetail() {
   const sendToLine = async () => {
     setSending(true)
     try {
-      const response = await fetch('/api/send-line', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ groupId: report.clients.line_group_id, message: lineMessage })
-      })
-      if (!response.ok) throw new Error('發送失敗')
+      await api.sendLine({ groupId: report.clients.line_group_id, message: lineMessage })
       setShowLinePreview(false)
       alert('已發送到 LINE 群組！')
     } catch (error) { alert('發送失敗: ' + error.message) } finally { setSending(false) }

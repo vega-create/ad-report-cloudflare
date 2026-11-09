@@ -1,24 +1,22 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 export default function Reports() {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   useEffect(() => { fetchReports() }, [])
   const fetchReports = async () => {
     try {
-      const { data, error } = await supabase.from('reports').select('*, clients(name)').order('created_at', { ascending: false })
-      if (error) throw error
+      const data = await api.reports.list({ order: '-created_at' })
       setReports(data || [])
     } catch (error) { console.error(error) } finally { setLoading(false) }
   }
   const deleteReport = async (id) => {
     if (!confirm('確定要刪除這份報告嗎？')) return
     try {
-      const { error } = await supabase.from('reports').delete().eq('id', id)
-      if (error) throw error
+      await api.reports.remove(id)
       setReports(reports.filter(r => r.id !== id))
-    } catch (error) { alert('刪除失敗') }
+    } catch (error) { alert('刪除失敗：' + error.message) }
   }
   if (loading) return <div className="flex items-center justify-center h-64"><div className="text-gray-400">載入中...</div></div>
   return (

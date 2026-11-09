@@ -1,1 +1,4 @@
+# 舊 Supabase Storage 路徑 → R2（/img 由 Pages Function 服務）
+/storage/v1/object/public/ads/* /img/ads/:splat 301
+/storage/v1/object/public/ai-ads/* /img/ai-ads/:splat 301
 /* /index.html 200

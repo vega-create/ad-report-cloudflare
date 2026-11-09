@@ -16,12 +16,9 @@ jobs:
 
       - run: npm ci
 
+      # 2026-11 起前端不再直連 Supabase，build 不需要任何 VITE_* 變數；
+      # D1 / R2 binding 由 wrangler.toml 在 pages deploy 時套用。
       - run: npm run build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_AGENT_SUPABASE_URL: ${{ secrets.VITE_AGENT_SUPABASE_URL }}
-          VITE_AGENT_SUPABASE_ANON_KEY: ${{ secrets.VITE_AGENT_SUPABASE_ANON_KEY }}
 
       - uses: cloudflare/wrangler-action@v3
         with:

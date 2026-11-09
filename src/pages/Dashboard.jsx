@@ -1,50 +1,18 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-import { supabaseAgent } from '../lib/supabase-agent'
+import { api } from '../lib/api'
 export default function Dashboard() {
   const [stats, setStats] = useState({ clients: 0, reports: 0, recentReports: [] })
   const [unrecordedClients, setUnrecordedClients] = useState([])
   const [loading, setLoading] = useState(true)
-  useEffect(() => { fetchStats(); fetchUnrecordedClients() }, [])
+  useEffect(() => { fetchStats() }, [])
   const fetchStats = async () => {
     try {
-      const { count: clientCount } = await supabase.from('clients').select('*', { count: 'exact', head: true })
-      const { count: reportCount } = await supabase.from('reports').select('*', { count: 'exact', head: true })
-      const { data: recentReports } = await supabase.from('reports').select('*, clients(name)').order('created_at', { ascending: false }).limit(5)
-      setStats({ clients: clientCount || 0, reports: reportCount || 0, recentReports: recentReports || [] })
+      // 統計、最近報告、最近 7 天未記錄的客戶（沒報告也沒快速記錄）一次由 /api/dashboard 算好
+      const d = await api.dashboard()
+      setStats({ clients: d.clients || 0, reports: d.reports || 0, recentReports: d.recentReports || [] })
+      setUnrecordedClients(d.unrecordedClients || [])
     } catch (error) { console.error(error) } finally { setLoading(false) }
-  }
-  const fetchUnrecordedClients = async () => {
-    try {
-      // 取得所有客戶
-      const { data: allClients } = await supabase.from('clients').select('id, name')
-      if (!allClients || allClients.length === 0) return
-
-      const sevenDaysAgo = new Date()
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-      const cutoff = sevenDaysAgo.toISOString()
-
-      // 最近 7 天有報告的客戶
-      const { data: recentReports } = await supabase
-        .from('reports')
-        .select('client_id')
-        .gte('created_at', cutoff)
-      const reportedIds = new Set((recentReports || []).map(r => r.client_id))
-
-      // 最近 7 天有快速記錄的客戶
-      const { data: recentLogs } = await supabaseAgent
-        .from('ad_quick_logs')
-        .select('client_name')
-        .gte('created_at', cutoff)
-      const loggedNames = new Set((recentLogs || []).map(l => l.client_name))
-
-      // 找出未記錄的
-      const unrecorded = allClients.filter(c =>
-        !reportedIds.has(c.id) && !loggedNames.has(c.name)
-      )
-      setUnrecordedClients(unrecorded)
-    } catch (error) { console.error(error) }
   }
   if (loading) return <div className="flex items-center justify-center h-64"><div className="text-gray-400">載入中...</div></div>
   return (

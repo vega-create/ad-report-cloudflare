@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { supabaseAgent as supabase } from '../lib/supabase-agent'
+import { api } from '../lib/api'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler } from 'chart.js'
 import { Pie, Line } from 'react-chartjs-2'
 import { downloadPdf } from '../lib/pdf'
@@ -61,7 +61,7 @@ export default function DailyPlans() {
 
   async function fetchPlans() {
     setLoading(true)
-    const { data } = await supabase.from('daily_plans').select('*').gte('plan_date', qStart).lte('plan_date', qEnd).order('category').order('created_at')
+    const data = await api.plans.list({ date_from: qStart, date_to: qEnd, order: 'category,created_at' }).catch(() => [])
     setPlans(data || []); setLoading(false)
   }
 
@@ -69,9 +69,8 @@ export default function DailyPlans() {
     if (!newPlan.description || saving) return
     setSaving(true)
     try {
-      for (const item of newPlan.description.split(/[、，,]/).map(s => s.trim()).filter(Boolean)) {
-        await supabase.from('daily_plans').insert({ plan_date: addDate, category: newPlan.category, description: item })
-      }
+      const items = newPlan.description.split(/[、，,]/).map(s => s.trim()).filter(Boolean)
+      await api.plans.create(items.map(item => ({ plan_date: addDate, category: newPlan.category, description: item })))
       setNewPlan({ category: '學習進度', description: '' }); setShowAdd(false); fetchPlans()
     } finally { setSaving(false) }
   }
@@ -80,7 +79,7 @@ export default function DailyPlans() {
     if (saving) return
     setSaving(true)
     try {
-      await supabase.from('daily_plans').update({ is_done: !plan.is_done, completed_at: !plan.is_done ? new Date().toISOString() : null }).eq('id', plan.id)
+      await api.plans.update(plan.id, { is_done: !plan.is_done, completed_at: !plan.is_done ? new Date().toISOString() : null })
       fetchPlans()
     } finally { setSaving(false) }
   }
@@ -89,7 +88,7 @@ export default function DailyPlans() {
     if (!editingPlan || !editForm.description || saving) return
     setSaving(true)
     try {
-      await supabase.from('daily_plans').update({ category: editForm.category, description: editForm.description }).eq('id', editingPlan.id)
+      await api.plans.update(editingPlan.id, { category: editForm.category, description: editForm.description })
       setEditingPlan(null); fetchPlans()
     } finally { setSaving(false) }
   }
@@ -98,7 +97,7 @@ export default function DailyPlans() {
     if (!confirm('確定要刪除？') || saving) return
     setSaving(true)
     try {
-      await supabase.from('daily_plans').delete().eq('id', id); setEditingPlan(null); fetchPlans()
+      await api.plans.remove(id); setEditingPlan(null); fetchPlans()
     } finally { setSaving(false) }
   }
 

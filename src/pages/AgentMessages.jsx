@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabaseAgent as supabase } from '../lib/supabase-agent'
+import { api } from '../lib/api'
 
 export default function AgentMessages() {
   const [messages, setMessages] = useState([])
@@ -17,48 +17,40 @@ export default function AgentMessages() {
   async function loadMessages() {
     setLoading(true)
 
-    let query = supabase
-      .from('agent_customer_messages')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(500)
+    const params = { limit: 500 }
 
     // 時間篩選
     if (dateFilter === 'today') {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      query = query.gte('created_at', today.toISOString())
+      params.created_after = today.toISOString()
     } else if (dateFilter === '7days') {
       const date = new Date()
       date.setDate(date.getDate() - 7)
-      query = query.gte('created_at', date.toISOString())
+      params.created_after = date.toISOString()
     } else if (dateFilter === '30days') {
       const date = new Date()
       date.setDate(date.getDate() - 30)
-      query = query.gte('created_at', date.toISOString())
+      params.created_after = date.toISOString()
     } else if (dateFilter === 'custom') {
-      if (customStartDate) query = query.gte('created_at', new Date(customStartDate).toISOString())
+      if (customStartDate) params.created_after = new Date(customStartDate).toISOString()
       if (customEndDate) {
         const end = new Date(customEndDate)
         end.setHours(23, 59, 59, 999)
-        query = query.lte('created_at', end.toISOString())
+        params.created_before = end.toISOString()
       }
     }
 
-    if (groupFilter !== 'all') query = query.eq('group_name', groupFilter)
-    if (searchText) query = query.ilike('message', `%${searchText}%`)
-    if (importantOnly) query = query.eq('is_important', true)
+    if (groupFilter !== 'all') params.group_name = groupFilter
+    if (searchText) params.search = searchText
+    if (importantOnly) params.important = true
 
-    const { data } = await query
+    const [data, groupData] = await Promise.all([
+      api.agent.messages.list(params).catch(() => []),
+      api.agent.messages.groups().catch(() => []),
+    ])
     setMessages(data || [])
-
-    // 取得群組列表
-    const { data: groupData } = await supabase
-      .from('agent_customer_messages')
-      .select('group_name')
-      .order('group_name')
-    const unique = [...new Set((groupData || []).map(g => g.group_name))]
-    setGroups(unique)
+    setGroups(groupData || [])
     setLoading(false)
   }
 
@@ -79,18 +71,12 @@ export default function AgentMessages() {
   }
 
   async function toggleImportant(id, currentValue) {
-    await supabase
-      .from('agent_customer_messages')
-      .update({ is_important: !currentValue })
-      .eq('id', id)
+    await api.agent.messages.update(id, { is_important: !currentValue }).catch(e => alert('更新失敗：' + e.message))
     setMessages(messages.map(m => m.id === id ? { ...m, is_important: !currentValue } : m))
   }
 
   async function saveNote(id) {
-    await supabase
-      .from('agent_customer_messages')
-      .update({ note: noteText })
-      .eq('id', id)
+    await api.agent.messages.update(id, { note: noteText }).catch(e => alert('更新失敗：' + e.message))
     setMessages(messages.map(m => m.id === id ? { ...m, note: noteText } : m))
     setEditingNote(null)
     setNoteText('')

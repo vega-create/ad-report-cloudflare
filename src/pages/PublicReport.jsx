@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { downloadPdf } from '../lib/pdf'
@@ -14,8 +14,7 @@ export default function PublicReport() {
   useEffect(() => { fetchReport() }, [id])
   const fetchReport = async () => {
     try {
-      const { data, error } = await supabase.from('reports').select('*, clients(name, industry)').eq('id', id).single()
-      if (error) throw error
+      const data = await api.public.report(id)
       setReport(data)
     } catch (error) { setError('找不到報告') } finally { setLoading(false) }
   }

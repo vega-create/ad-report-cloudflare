@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { supabaseAgent } from '../lib/supabase-agent'
+import { api } from '../lib/api'
 import { downloadPdf } from '../lib/pdf'
 
 export default function OperationLogs() {
@@ -24,10 +24,9 @@ export default function OperationLogs() {
   }, [filterClient, filterMonth])
 
   async function fetchClients() {
-    const { data: d1 } = await supabaseAgent.from('ad_operation_logs').select('client_name')
-    const { data: d2 } = await supabaseAgent.from('ad_tasks').select('client_name')
-    const all = [...(d1 || []), ...(d2 || [])].map(c => c.client_name)
-    setClients([...new Set(all)].sort())
+    // 出現在操作記錄或任務裡的客戶名稱（去重排序）
+    const all = await api.clientNames(['tasks', 'logs']).catch(() => [])
+    setClients(all)
   }
 
   async function fetchLogs() {
@@ -38,18 +37,10 @@ export default function OperationLogs() {
     const nextYear = month + 1 > 12 ? year + 1 : year
     const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
 
-    let query = supabaseAgent
-      .from('ad_operation_logs')
-      .select('*')
-      .gte('operation_date', startDate)
-      .lt('operation_date', endDate)
-      .order('operation_date', { ascending: false })
-
-    if (filterClient) {
-      query = query.eq('client_name', filterClient)
-    }
-
-    const { data } = await query
+    const data = await api.operationLogs.list({
+      date_from: startDate, date_before: endDate, order: '-operation_date',
+      client_name: filterClient || undefined,
+    }).catch(() => [])
     setLogs(data || [])
     setLoading(false)
   }
@@ -58,13 +49,13 @@ export default function OperationLogs() {
     if (!newLog.client_name || !newLog.description) return
     const today = new Date().toLocaleDateString('sv-SE')
 
-    await supabaseAgent.from('ad_operation_logs').insert({
+    await api.operationLogs.create({
       client_name: newLog.client_name,
       operation_date: today,
       platform: newLog.platform || null,
       description: newLog.description,
       raw_message: `(from web) ${newLog.description}`,
-    })
+    }).catch(e => alert('儲存失敗：' + e.message))
 
     setNewLog({ client_name: '', platform: '', description: '' })
     setShowAddModal(false)
@@ -74,7 +65,7 @@ export default function OperationLogs() {
 
   async function handleDelete(id) {
     if (!confirm('確定要刪除這筆記錄？')) return
-    await supabaseAgent.from('ad_operation_logs').delete().eq('id', id)
+    await api.operationLogs.remove(id).catch(e => alert('刪除失敗：' + e.message))
     fetchLogs()
   }
 

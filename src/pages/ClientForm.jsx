@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 export default function ClientForm() {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -11,8 +11,7 @@ export default function ClientForm() {
   useEffect(() => { if (isEditing) fetchClient() }, [id])
   const fetchClient = async () => {
     try {
-      const { data, error } = await supabase.from('clients').select('*').eq('id', id).single()
-      if (error) throw error
+      const data = await api.clients.get(id)
       if (data) setForm({ name: data.name || '', industry: data.industry || '', line_group_id: data.line_group_id || '', notes: data.notes || '' })
     } catch (error) { alert('載入客戶資料失敗') } finally { setFetching(false) }
   }
@@ -21,15 +20,10 @@ export default function ClientForm() {
     if (!form.name.trim()) { alert('請輸入客戶名稱'); return }
     setLoading(true)
     try {
-      if (isEditing) {
-        const { error } = await supabase.from('clients').update(form).eq('id', id)
-        if (error) throw error
-      } else {
-        const { error } = await supabase.from('clients').insert([form])
-        if (error) throw error
-      }
+      if (isEditing) await api.clients.update(id, form)
+      else await api.clients.create(form)
       navigate('/clients')
-    } catch (error) { alert('儲存失敗') } finally { setLoading(false) }
+    } catch (error) { alert('儲存失敗：' + error.message) } finally { setLoading(false) }
   }
   if (fetching) return <div className="flex items-center justify-center h-64"><div className="text-gray-400">載入中...</div></div>
   return (

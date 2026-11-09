@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabaseAgent as supabase } from '../lib/supabase-agent'
+import { api } from '../lib/api'
 
 export default function AgentDashboard() {
   const [employeeStats, setEmployeeStats] = useState([])
@@ -12,42 +12,10 @@ export default function AgentDashboard() {
   }, [])
 
   async function loadStats() {
-    const { data: employees } = await supabase
-      .from('agent_employees')
-      .select('id, name')
-      .eq('is_active', true)
-
-    const today = new Date().toISOString().split('T')[0]
-    const stats = []
-
-    for (const emp of employees || []) {
-      const { count: totalTasks } = await supabase
-        .from('agent_tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('employee_id', emp.id)
-        .eq('is_active', true)
-
-      const { count: completedToday } = await supabase
-        .from('agent_task_records')
-        .select('*', { count: 'exact', head: true })
-        .eq('employee_id', emp.id)
-        .gte('completed_at', today)
-
-      stats.push({
-        name: emp.name,
-        total: totalTasks || 0,
-        completed: completedToday || 0,
-        rate: totalTasks ? Math.round(((completedToday || 0) / totalTasks) * 100) : 0,
-      })
-    }
-
-    const { count } = await supabase
-      .from('agent_customer_messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_replied', false)
-
-    setEmployeeStats(stats)
-    setUnreadMessages(count || 0)
+    // 每位員工任務數／今日完成數＋未回覆訊息數，由 /api/agent/stats 算好
+    const d = await api.agent.stats().catch(() => ({ employeeStats: [], unreadMessages: 0 }))
+    setEmployeeStats(d.employeeStats || [])
+    setUnreadMessages(d.unreadMessages || 0)
     setLoading(false)
   }
 

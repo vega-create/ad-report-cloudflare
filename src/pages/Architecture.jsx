@@ -21,9 +21,9 @@ export default function Architecture() {
           </div>
           <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-4">
             <p className="text-purple-400 font-bold text-sm">資料庫</p>
-            <p className="text-white font-semibold mt-1">Supabase</p>
-            <p className="text-gray-400 text-xs mt-1">PostgreSQL</p>
-            <p className="text-gray-500 text-xs">兩個專案（廣告 + Agent）</p>
+            <p className="text-white font-semibold mt-1">Cloudflare D1「adreport」</p>
+            <p className="text-gray-400 text-xs mt-1">SQLite；圖片在 R2「adreport-ads」</p>
+            <p className="text-gray-500 text-xs">2026-11 從 Supabase 兩個專案合併搬來；前端走 /api（Pages Functions），MCP 直接綁 D1</p>
           </div>
         </div>
       </div>
@@ -65,11 +65,11 @@ export default function Architecture() {
         </div>
       </div>
 
-      {/* Supabase 資料庫 */}
+      {/* D1 資料庫 */}
       <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-white">Supabase 資料表</h2>
+        <h2 className="text-lg font-semibold text-white">D1 資料表（adreport）</h2>
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-blue-400">廣告系統（VITE_SUPABASE_*）</h3>
+          <h3 className="text-sm font-semibold text-blue-400">廣告系統</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -92,14 +92,22 @@ export default function Architecture() {
                   <td className="py-2 px-3">廣告任務排程（日曆上的任務）</td>
                 </tr>
                 <tr className="border-b border-gray-700/50">
-                  <td className="py-2 px-3 font-mono text-xs text-white">quick_logs</td>
+                  <td className="py-2 px-3 font-mono text-xs text-white">ad_operation_logs</td>
+                  <td className="py-2 px-3">廣告操作記錄（LINE「記錄 …」或網頁新增）</td>
+                </tr>
+                <tr className="border-b border-gray-700/50">
+                  <td className="py-2 px-3 font-mono text-xs text-white">ad_quick_logs</td>
                   <td className="py-2 px-3">快速記錄（不需完整報告的客戶）</td>
+                </tr>
+                <tr className="border-b border-gray-700/50">
+                  <td className="py-2 px-3 font-mono text-xs text-white">proposals / report_feedback / daily_plans</td>
+                  <td className="py-2 px-3">提案、報告修正記錄（MCP 學習偏好）、每日計畫</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <h3 className="text-sm font-semibold text-green-400 mt-4">智慧媽咪 Agent（VITE_AGENT_SUPABASE_*）</h3>
+          <h3 className="text-sm font-semibold text-green-400 mt-4">智慧媽咪 Agent（LINE bot 寫入；網頁只讀四張：employees / tasks / task_records / customer_messages）</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -224,18 +232,15 @@ export default function Architecture() {
             <p>LINE_CHANNEL_ACCESS_TOKEN</p>
             <p>LINE_CHANNEL_SECRET</p>
             <p>OPENAI_API_KEY</p>
-            <p>SUPABASE_URL</p>
-            <p>SUPABASE_ANON_KEY</p>
+            <p>（資料層搬遷中：之後改打 ad-report 的 /api 或直接綁 D1）</p>
           </div>
 
           <h3 className="text-sm font-semibold text-blue-400 mt-3">ad-report-cloudflare（Cloudflare Pages）</h3>
           <div className="bg-gray-900 rounded-lg p-4 font-mono text-xs space-y-1 text-gray-400">
-            <p>VITE_SUPABASE_URL（廣告系統資料庫）</p>
-            <p>VITE_SUPABASE_ANON_KEY</p>
-            <p>VITE_AGENT_SUPABASE_URL（智慧媽咪資料庫）</p>
-            <p>VITE_AGENT_SUPABASE_ANON_KEY</p>
+            <p>DB（D1 binding）/ BUCKET（R2 binding）— wrangler.toml</p>
+            <p>ACCESS_TEAM_DOMAIN / ACCESS_AUD（Cloudflare Access 驗證）</p>
+            <p>API_TOKEN（MCP / LINE bot 呼叫 /api 用）</p>
             <p>LINE_CHANNEL_ACCESS_TOKEN</p>
-            <p>LINE_CHANNEL_SECRET</p>
             <p>OPENAI_API_KEY</p>
           </div>
         </div>

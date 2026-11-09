@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-import { supabaseAgent } from '../lib/supabase-agent'
+import { api } from '../lib/api'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -24,23 +23,12 @@ export default function NewReport() {
     if (!client) return
 
     const fetchCompletedTasks = async () => {
-      const { data } = await supabase
-        .from('ad_tasks')
-        .select('*')
-        .eq('client_name', client.name)
-        .eq('status', 'done')
-        .eq('include_in_next_report', true)
-        .order('completed_at')
+      const data = await api.tasks.list({ client_name: client.name, status: 'done', include_in_next_report: true, order: 'completed_at' }).catch(() => [])
       setCompletedTasks(data || [])
     }
 
     const fetchOperationLogs = async () => {
-      const { data } = await supabaseAgent
-        .from('ad_operation_logs')
-        .select('*')
-        .eq('client_name', client.name)
-        .eq('include_in_report', true)
-        .order('operation_date')
+      const data = await api.operationLogs.list({ client_name: client.name, include_in_report: true, order: 'operation_date' }).catch(() => [])
       setOperationLogs(data || [])
     }
 
@@ -50,8 +38,7 @@ export default function NewReport() {
 
   const fetchClients = async () => {
     try {
-      const { data, error } = await supabase.from('clients').select('*').order('name')
-      if (error) throw error
+      const data = await api.clients.list({ order: 'name' })
       setClients(data || [])
     } catch (error) { console.error(error) }
   }
@@ -61,13 +48,12 @@ export default function NewReport() {
     if (!content.trim()) { alert('請輸入報告內容'); return }
     setSaving(true)
     try {
-      const { data: report, error } = await supabase.from('reports').insert([{
+      const report = await api.reports.create({
         client_id: selectedClient,
         data_analysis: content,
         report_date: new Date().toISOString().split('T')[0],
         status: 'draft'
-      }]).select().single()
-      if (error) throw error
+      })
       await markTasksConsumed()
       navigate(`/reports/${report.id}`)
     } catch (error) { alert('儲存失敗: ' + error.message) } finally { setSaving(false) }
@@ -108,11 +94,11 @@ export default function NewReport() {
   const markTasksConsumed = async () => {
     const taskIds = completedTasks.map(t => t.id)
     if (taskIds.length > 0) {
-      await supabase.from('ad_tasks').update({ include_in_next_report: false }).in('id', taskIds)
+      await api.tasks.updateMany(taskIds, { include_in_next_report: false })
     }
     const logIds = operationLogs.map(l => l.id)
     if (logIds.length > 0) {
-      await supabaseAgent.from('ad_operation_logs').update({ include_in_report: false }).in('id', logIds)
+      await api.operationLogs.updateMany(logIds, { include_in_report: false })
     }
     setCompletedTasks([])
     setOperationLogs([])

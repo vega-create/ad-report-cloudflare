@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabaseAgent as supabase } from '../lib/supabase-agent'
+import { api } from '../lib/api'
 
 export default function AgentTasks() {
   const [tasks, setTasks] = useState([])
@@ -13,15 +13,9 @@ export default function AgentTasks() {
   })
 
   async function loadData() {
-    const [{ data: tasksData }, { data: empData }] = await Promise.all([
-      supabase
-        .from('agent_tasks')
-        .select('id, task_name, client_name, frequency, frequency_detail, is_active, employee_id, agent_employees (name)')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('agent_employees')
-        .select('id, name')
-        .eq('is_active', true),
+    const [tasksData, empData] = await Promise.all([
+      api.agent.tasks.list().catch(() => []),
+      api.agent.employees({ active: true }).catch(() => []),
     ])
 
     setTasks((tasksData || []).map(t => ({
@@ -36,20 +30,19 @@ export default function AgentTasks() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (editingId) {
-      await supabase.from('agent_tasks').update({
-        employee_id: formData.employee_id,
-        client_name: formData.client_name,
-        task_name: formData.task_name,
-        frequency: formData.frequency,
-        frequency_detail: formData.frequency_detail,
-      }).eq('id', editingId)
-    } else {
-      await supabase.from('agent_tasks').insert({
-        ...formData,
-        is_active: true,
-      })
-    }
+    try {
+      if (editingId) {
+        await api.agent.tasks.update(editingId, {
+          employee_id: formData.employee_id,
+          client_name: formData.client_name,
+          task_name: formData.task_name,
+          frequency: formData.frequency,
+          frequency_detail: formData.frequency_detail,
+        })
+      } else {
+        await api.agent.tasks.create({ ...formData, is_active: true })
+      }
+    } catch (e) { alert('儲存失敗：' + e.message); return }
     setShowForm(false)
     setEditingId(null)
     setFormData({ employee_id: '', client_name: '', task_name: '', frequency: 'weekly', frequency_detail: '' })
@@ -70,9 +63,8 @@ export default function AgentTasks() {
 
   async function handleDelete(id) {
     if (!confirm('確定要刪除這個任務嗎？')) return
-    // 先刪關聯的 task_records，再刪任務
-    await supabase.from('agent_task_records').delete().eq('task_id', id)
-    await supabase.from('agent_tasks').delete().eq('id', id)
+    // API 會先刪關聯的 task_records，再刪任務
+    await api.agent.tasks.remove(id).catch(e => alert('刪除失敗：' + e.message))
     loadData()
   }
 

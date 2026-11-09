@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { downloadPdf } from '../lib/pdf'
@@ -14,18 +14,16 @@ export default function ProposalDetail() {
   useEffect(() => { fetchProposal() }, [id])
   const fetchProposal = async () => {
     try {
-      const { data, error } = await supabase.from('proposals').select('*, clients(name, line_group_id)').eq('id', id).single()
-      if (error) throw error
+      const data = await api.proposals.get(id)
       setProposal(data)
     } catch (error) { console.error(error) } finally { setLoading(false) }
   }
   const publishProposal = async () => {
     setPublishing(true)
     try {
-      const { error } = await supabase.from('proposals').update({ status: 'published' }).eq('id', id)
-      if (error) throw error
+      await api.proposals.update(id, { status: 'published' })
       setProposal(prev => ({ ...prev, status: 'published' }))
-    } catch (error) { alert('發布失敗') } finally { setPublishing(false) }
+    } catch (error) { alert('發布失敗：' + error.message) } finally { setPublishing(false) }
   }
   if (loading) return <div className="flex items-center justify-center h-64"><div className="text-gray-400">載入中...</div></div>
   if (!proposal) return <div className="text-center py-12"><div className="text-5xl mb-4">😕</div><h2 className="text-xl text-white mb-2">找不到提案</h2><Link to="/proposals" className="text-blue-400">返回提案列表</Link></div>
