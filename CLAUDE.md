@@ -7,7 +7,7 @@
 
 - **前端**：React 18.2 + Vite 5.0（SPA，JSX）
 - **後端**：Cloudflare Pages Functions（`functions/`），前端只透過 `/api/*` 存取資料，瀏覽器不直連資料庫
-- **資料庫**：Cloudflare D1 `adreport`（binding `DB`，schema 在 `migrations/d1/`）
+- **資料庫**：Cloudflare D1 `adreport`（binding `DB`，schema 在 `migrations/d1/`）；agent_* 讀 LINE bot 的 D1 `mommy-wisdom-bot`（binding `AGENT_DB`）。LINE bot 也把 ad_tasks／ad_operation_logs／daily_plans／clients／reports／report_feedback 直接寫進 `adreport`
 - **圖片**：Cloudflare R2 `adreport-ads`（binding `BUCKET`），由 `/img/<key>` 回傳
 - **登入**：Cloudflare Access（網頁）；`/api/*` 由 Functions 再驗 Access JWT（header 或 `CF_Authorization` cookie，驗 AUD）或程式用的 `Bearer API_TOKEN`；`/api/public/*` 與 `/img/*` 不需登入
 - **通知**：LINE Messaging API
@@ -36,7 +36,7 @@ npm run dev:pages             # build + wrangler pages dev dist（http://localho
 | `ad_operation_logs` | 廣告操作記錄（client_name, operation_date, platform, description, include_in_report） |
 | `ad_quick_logs` | 快速記錄（spend_summary JSON） |
 | `daily_plans` | 每日計畫 |
-| `agent_employees` / `agent_tasks` / `agent_task_records` / `agent_customer_messages` | 智慧媽咪 LINE bot 的員工／任務／客戶訊息（bot 是主要寫入者；若 bot 搬到自己的 D1，Pages 綁 `AGENT_DB` 即可改讀那邊） |
+| `agent_employees` / `agent_tasks` / `agent_task_records` / `agent_customer_messages` | 智慧媽咪 LINE bot 的員工／任務／客戶訊息。**唯一真身在 bot 的 D1 `mommy-wisdom-bot`**，Pages 以 `AGENT_DB` binding 直接讀；`adreport` 裡的同名表只是備用（搬遷腳本預設不匯，加 `--include-agent` 才匯） |
 
 布林存 0/1、JSON 存字串，`functions/_lib/db.js` 讀寫時自動轉換；id 為 UUID。
 
@@ -95,7 +95,7 @@ src/lib/api.ts                      # 前端唯一資料入口
 
 ## 環境變數 / Secret
 
-- `wrangler.toml`：D1 / R2 binding、`ACCESS_TEAM_DOMAIN`
+- `wrangler.toml`：D1（`DB`＝adreport、`AGENT_DB`＝mommy-wisdom-bot）/ R2 binding、`ACCESS_TEAM_DOMAIN`
 - Pages Secret：`ACCESS_AUD`、`API_TOKEN`、`OPENAI_API_KEY`、`LINE_CHANNEL_ACCESS_TOKEN`
 - GitHub Secret：`CLOUDFLARE_API_TOKEN`（部署＋每週備份）、`CLOUDFLARE_ACCOUNT_ID`
 

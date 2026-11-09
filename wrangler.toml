@@ -22,6 +22,14 @@ database_name = "adreport"
 database_id = "04dbb20a-0f0d-4dcf-9887-a85797841e38"
 migrations_dir = "migrations/d1"
 
+# agent_* 四張表（員工／任務／客戶訊息）的唯一真身是 LINE bot 的 D1 `mommy-wisdom-bot`；
+# functions/_lib/agent.js 用 env.AGENT_DB || env.DB，有這個 binding 就讀 bot 那顆。
+# 本機 wrangler pages dev 這顆是空的（bot 的本機資料在 ~/mommy-wisdom-worker/.wrangler），智慧媽咪頁會顯示空白，正常。
+[[d1_databases]]
+binding = "AGENT_DB"
+database_name = "mommy-wisdom-bot"
+database_id = "96da29bb-83e6-47b0-851e-cb36b5356734"
+
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "adreport-ads"

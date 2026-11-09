@@ -6,11 +6,13 @@
 //   node scripts/migrate-from-supabase.mjs <輸出資料夾> --apply local      匯出後寫進本機 D1/R2（wrangler pages dev 用）並核對
 //   node scripts/migrate-from-supabase.mjs <輸出資料夾> --apply remote     匯出後寫進正式 D1/R2 並核對
 //   node scripts/migrate-from-supabase.mjs <輸出資料夾> --apply remote --skip-export   用既有匯出直接套用
+//   加 --include-agent 才會匯 agent_* 四張表（預設跳過：它們的唯一真身是 LINE bot 的 D1 `mommy-wisdom-bot`，
+//   網頁透過 AGENT_DB binding 直接讀那顆，這裡再匯一份會分岔）
 //
 // 金鑰：只讀 .env.local（或環境變數），絕不印出；對 Supabase 只做讀取。
 //   AD_SUPABASE_URL / AD_SUPABASE_SERVICE_KEY        lbkrvyfsusmkjrjglbwm（Ad 專案）：clients / reports / proposals / report_feedback ＋ ads 桶
-//   AGENT_SUPABASE_URL / AGENT_SUPABASE_SERVICE_KEY  lexcvcinmphkmavgswgn（共用專案）：ad_tasks / ad_operation_logs / ad_quick_logs / daily_plans / agent_*
-//   （用 anon key 也能跑，但 lexcvc 的 agent_customer_messages 會被 RLS 擋成 0 筆，請用 service key）
+//   AGENT_SUPABASE_URL / AGENT_SUPABASE_SERVICE_KEY  lexcvcinmphkmavgswgn（共用專案）：ad_tasks / ad_operation_logs / ad_quick_logs / daily_plans
+//   （這四張用 anon key 也讀得全；只有 --include-agent 的 agent_customer_messages 需要 service key）
 // ⚠️ 輸出資料夾含客戶報告全文與 LINE 群組 ID，請放在專案外、不要進 git。
 // 可重跑：INSERT OR REPLACE；R2 上傳同 key 覆蓋。切換當天再跑一次 --apply remote 同步最新資料。
 //
@@ -26,6 +28,7 @@ const args = process.argv.slice(2);
 const OUT = args.find((a) => !a.startsWith('--'));
 const APPLY = args.includes('--apply') ? args[args.indexOf('--apply') + 1] : null;
 const SKIP_EXPORT = args.includes('--skip-export');
+const INCLUDE_AGENT = args.includes('--include-agent');
 if (!OUT || (APPLY && !['local', 'remote'].includes(APPLY))) {
   console.error('用法：node scripts/migrate-from-supabase.mjs <輸出資料夾> [--apply local|remote] [--skip-export]');
   process.exit(1);
@@ -65,6 +68,11 @@ const SKIPPED = [
   { project: 'ad (lbkrvy)', table: 'ad_operation_logs', reason: '空表（0 筆），活的資料在 lexcvc' },
   { project: 'ad (lbkrvy)', table: 'ad_tasks', reason: '不存在（PostgREST 404），活的資料在 lexcvc' },
 ];
+const AGENT_ONLY = ['agent_employees', 'agent_tasks', 'agent_task_records', 'agent_customer_messages'];
+if (!INCLUDE_AGENT) {
+  for (const t of AGENT_ONLY) delete TABLES.agent[t];
+  SKIPPED.push({ project: 'agent (lexcvc)', table: AGENT_ONLY.join(' / '), reason: '唯一真身在 LINE bot 的 D1 mommy-wisdom-bot（網頁用 AGENT_DB binding 讀），加 --include-agent 才匯' });
+}
 const ALL_TABLES = { ...TABLES.ad, ...TABLES.agent };
 // 哪些欄位是 timestamptz → 轉成 ISO 8601 UTC（與 D1 預設格式一致）
 const TS_COLS = new Set(['created_at', 'updated_at', 'completed_at', 'published_at']);
