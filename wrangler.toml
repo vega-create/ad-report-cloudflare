@@ -12,9 +12,11 @@ pages_build_output_dir = "dist"
 compatibility_date = "2025-03-25"
 compatibility_flags = ["nodejs_compat"]
 
-# ACCESS_TEAM_DOMAIN（lingering-cherry-4e64.cloudflareaccess.com）與 ACCESS_AUD 都用
-# `wrangler pages secret put` 設在 Pages 專案上；同名不能同時出現在 [vars]，否則部署會報
-# "Binding name already in use"。
+# Access 團隊網域（驗 JWT 的 issuer / JWKS 來源）；不是機密，放 [vars]。
+# ⚠️ 不要再用 `wrangler pages secret put ACCESS_TEAM_DOMAIN` 另外設一份：同名會讓部署報
+# "Binding name already in use"；而且 Pages 部署會以這個檔為準，清掉不在檔裡的同名綁定。
+[vars]
+ACCESS_TEAM_DOMAIN = "lingering-cherry-4e64.cloudflareaccess.com"
 
 [[d1_databases]]
 binding = "DB"
