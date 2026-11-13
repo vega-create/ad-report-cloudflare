@@ -3,6 +3,7 @@ name: Deploy to Cloudflare Pages
 on:
   push:
     branches: [main]
+  workflow_dispatch: {} # 改了 Pages secret 之後要重新部署才會生效，可在 GitHub Actions 頁面手動按
 
 jobs:
   deploy:
