@@ -33,7 +33,7 @@ jobs:
 
       - name: 備份 D1
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
           BACKUP_ROOT: ./backup-out
         run: node scripts/backup-db.mjs
 
